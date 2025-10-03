@@ -1,0 +1,76 @@
+/* Estilos globales para el Sistema de Boletería */
+
+.event-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+}
+
+.event-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.ticket-option {
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.ticket-option:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.ticket-option.selected {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+
+.progress-step {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.progress-step.active {
+    background-color: #007bff;
+    color: white;
+}
+
+.progress-step.completed {
+    background-color: #28a745;
+    color: white;
+}
+
+.progress-step.inactive {
+    background-color: #e9ecef;
+    color: #6c757d;
+}
+
+.qr-container {
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.ticket-summary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 20px;
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+.hero-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 60px 0;
+}

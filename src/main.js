@@ -1,14 +1,16 @@
 const { createApp } = Vue;
 
-createApp({
+const app = createApp({
     data() {
         return {
             currentStep: 1,
             processing: false,
             selectedEvent: null,
             selectedTicket: null,
+            ticketQuantity: 1,
             ticketCode: '',
             serviceCharge: 5.00,
+            ticketCounter: 0, // Contador secuencial global
             personalData: {
                 firstName: '',
                 lastName: '',
@@ -103,8 +105,12 @@ createApp({
     },
     computed: {
         totalAmount() {
-            if (!this.selectedTicket) return 0;
-            return this.selectedTicket.price + this.serviceCharge;
+            if (!this.selectedTicket || !this.ticketQuantity) return 0;
+            return (this.selectedTicket.price * this.ticketQuantity) + this.serviceCharge;
+        },
+        subtotal() {
+            if (!this.selectedTicket || !this.ticketQuantity) return 0;
+            return this.selectedTicket.price * this.ticketQuantity;
         },
         progressWidth() {
             return (this.currentStep - 1) * 33.33;
@@ -117,6 +123,17 @@ createApp({
         },
         selectTicket(ticket) {
             this.selectedTicket = ticket;
+            this.ticketQuantity = 1; // Resetear cantidad al cambiar de ticket
+        },
+        increaseQuantity() {
+            if (this.selectedTicket && this.ticketQuantity < this.selectedTicket.available) {
+                this.ticketQuantity++;
+            }
+        },
+        decreaseQuantity() {
+            if (this.ticketQuantity > 1) {
+                this.ticketQuantity--;
+            }
         },
         proceedToPersonalData() {
             if (this.selectedTicket) {
@@ -129,34 +146,93 @@ createApp({
             // Simular procesamiento de pago
             await new Promise(resolve => setTimeout(resolve, 2000));
             
-            // Generar código de entrada único
-            this.ticketCode = 'TKT-' + Date.now().toString().slice(-8);
+            // Generar código de entrada único con formato específico
+            this.ticketCode = this.generateTicketCode();
             
             this.processing = false;
             this.currentStep = 4;
             
-            // Generar QR después de que la vista se haya renderizado
+            // Generar QR después de que la vista se haya renderizado con múltiples intentos
             this.$nextTick(() => {
+                console.log('Processing payment completed, generating QR...');
+                
+                // Primer intento inmediato
                 this.generateQR();
+                
+                // Segundo intento después de 500ms
+                setTimeout(() => {
+                    this.generateQR();
+                }, 500);
+                
+                // Tercer intento después de 1s
+                setTimeout(() => {
+                    this.generateQR();
+                }, 1000);
             });
         },
-        generateQR() {
-            const canvas = document.getElementById('qrcode');
-            if (canvas) {
-                const qrData = {
-                    ticketCode: this.ticketCode,
-                    event: this.selectedEvent.name,
-                    date: this.selectedEvent.date,
-                    location: this.selectedEvent.location,
-                    ticketType: this.selectedTicket.name,
-                    holder: `${this.personalData.firstName} ${this.personalData.lastName}`,
-                    document: this.personalData.document
-                };
-                
-                QRCode.toCanvas(canvas, JSON.stringify(qrData), { width: 250 }, (error) => {
-                    if (error) console.error(error);
-                });
+        generateTicketCode() {
+            // Formato: PREFIJO-IDEVENTO-DIA/MES-ALEATORIO-SECUENCIAL
+            // Ejemplo: TKT-EV01-0312-F7J9-001
+            
+            const prefijo = 'TKT';
+            const idEvento = 'EV' + String(this.selectedEvent.id).padStart(2, '0');
+            
+            // Obtener día y mes actual
+            const now = new Date();
+            const dia = String(now.getDate()).padStart(2, '0');
+            const mes = String(now.getMonth() + 1).padStart(2, '0');
+            const fecha = dia + mes;
+            
+            // Generar código aleatorio de 4 caracteres alfanuméricos
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let aleatorio = '';
+            for (let i = 0; i < 4; i++) {
+                aleatorio += chars.charAt(Math.floor(Math.random() * chars.length));
             }
+            
+            // Incrementar contador secuencial
+            this.ticketCounter++;
+            const secuencial = String(this.ticketCounter).padStart(3, '0');
+            
+            return `${prefijo}-${idEvento}-${fecha}-${aleatorio}-${secuencial}`;
+        },
+        generateQR() {
+            // Verificar que QRCode esté disponible
+            if (typeof QRCode === 'undefined') {
+                console.error('QRCode library not loaded');
+                return;
+            }
+
+            // Usar setTimeout para asegurar que los elementos estén en el DOM
+            setTimeout(() => {
+                console.log('Generando código QR de entrada...');
+                console.log('Código de entrada:', this.ticketCode);
+                
+                // Generar QR solo con el código de entrada
+                const ticketCodeDiv = document.getElementById('qrTicketCode');
+                if (ticketCodeDiv) {
+                    try {
+                        console.log('Generando QR del código de entrada...');
+                        // Limpiar contenido anterior
+                        ticketCodeDiv.innerHTML = '';
+                        
+                        // Generar QR usando la librería QRCode
+                        new QRCode(ticketCodeDiv, {
+                            text: this.ticketCode,
+                            width: 200,
+                            height: 200,
+                            colorDark: '#000000',
+                            colorLight: '#ffffff',
+                            correctLevel: QRCode.CorrectLevel.H
+                        });
+                        console.log('✅ Código QR generado exitosamente');
+                    } catch (error) {
+                        console.error('❌ Error generando código QR:', error);
+                    }
+                } else {
+                    console.error('❌ Div qrTicketCode no encontrado en el DOM');
+                }
+            }, 300);
         },
         goBack() {
             if (this.currentStep > 1) {
@@ -177,6 +253,7 @@ createApp({
             this.currentStep = 1;
             this.selectedEvent = null;
             this.selectedTicket = null;
+            this.ticketQuantity = 1;
             this.personalData = {
                 firstName: '',
                 lastName: '',
@@ -191,9 +268,22 @@ createApp({
                 cvv: ''
             };
             this.ticketCode = '';
+            // Nota: ticketCounter se mantiene para seguir la secuencia
+        },
+        // Método alternativo para generar QR en caso de problemas
+        retryGenerateQR() {
+            console.log('Retrying QR generation...');
+            this.generateQR();
         }
     },
     mounted() {
+        // Verificar que QRCode esté disponible
+        if (typeof QRCode === 'undefined') {
+            console.error('QRCode library not loaded. Make sure the QRCode script is included.');
+        } else {
+            console.log('QRCode library loaded successfully');
+        }
+
         // Formatear número de tarjeta mientras se escribe
         this.$watch('paymentData.cardNumber', (newVal) => {
             let formatted = newVal.replace(/\s/g, '').replace(/(.{4})/g, '$1 ').trim();
@@ -209,5 +299,17 @@ createApp({
                 this.paymentData.expiry = formatted;
             }
         });
+
+        // Watcher para generar QR cuando se complete el proceso
+        this.$watch('currentStep', (newStep) => {
+            if (newStep === 4 && this.ticketCode) {
+                setTimeout(() => {
+                    this.generateQR();
+                }, 200);
+            }
+        });
     }
-}).mount('#app');
+});
+
+// Montar la aplicación
+app.mount('#app');

@@ -21,6 +21,10 @@ export const useTicketStore = defineStore('ticket', {
       expiry: '',
       cvv: ''
     },
+    ticketDetails: {
+    gate: '', // Puerta asignada
+    seat: ''  // Puedes agregar más campos si lo necesitas
+  },
     events: [
       {
         id: 1,
@@ -177,6 +181,47 @@ export const useTicketStore = defineStore('ticket', {
       }
       this.ticketCode = ''
       this.processing = false
+  }
+  ,
+  updateTicketDetails(details) {
+    this.ticketDetails = { ...this.ticketDetails, ...details }
+  },
+
+  async downloadTicketPDF() {
+    // Esta función debe llamarse desde el componente Vue, donde puedes usar jsPDF
+    // Aquí solo se prepara la data
+    return {
+      event: this.selectedEvent,
+      ticket: this.selectedTicket,
+      personalData: this.personalData,
+      ticketCode: this.ticketCode,
+      ticketDetails: this.ticketDetails
+    }
+  },
+
+  async sendTicketByEmail(email) {
+    // Simulación: en producción, llamarías a un endpoint backend
+    // Aquí solo retorna los datos que se enviarían
+    const to = email || this.personalData.email
+    if (!to) throw new Error('No se ha proporcionado un correo electrónico válido.')
+
+    // Aquí deberías hacer una petición HTTP a tu backend para enviar el correo
+    // Por ejemplo:
+    // await fetch('/api/send-ticket', { method: 'POST', body: JSON.stringify({ ... }) })
+
+    return {
+      to,
+      subject: `Tu ticket para ${this.selectedEvent?.name}`,
+      body: {
+        event: this.selectedEvent,
+        ticket: this.selectedTicket,
+        personalData: this.personalData,
+        ticketCode: this.ticketCode,
+        ticketDetails: this.ticketDetails
+      }
     }
   }
+
+},
+
 })

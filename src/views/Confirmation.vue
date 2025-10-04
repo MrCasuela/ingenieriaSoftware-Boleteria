@@ -41,6 +41,14 @@
               También hemos enviado una copia a tu email.
             </div>
 
+            <div class="alert alert-success mt-3">
+              <i class="fas fa-user-shield me-2"></i>
+              <strong>Para Operadores:</strong> Puedes validar este ticket usando el código 
+              <code class="bg-white px-2 py-1">{{ ticketCode }}</code> o el RUT 
+              <code class="bg-white px-2 py-1">{{ personalData.document }}</code> en el 
+              <router-link to="/operator/login" class="alert-link">Panel de Operador</router-link>.
+            </div>
+
             <div class="mt-4">
               <button class="btn btn-primary me-3" @click="downloadTicket">
                 <i class="fas fa-download me-2"></i>Descargar Entrada

@@ -25,6 +25,8 @@
                 <p><strong>Fecha:</strong> {{ selectedEvent.date }}</p>
                 <p><strong>Ubicación:</strong> {{ selectedEvent.location }}</p>
                 <p><strong>Tipo de Entrada:</strong> {{ selectedTicket.name }}</p>
+                <p><strong>Cantidad:</strong> {{ ticketQuantity }}</p>
+                <p><strong>Precio Total:</strong> ${{ totalAmount }}</p>
                 
                 <hr>
                 <h5 class="mb-3">Datos del Comprador</h5>
@@ -38,23 +40,17 @@
             <div class="alert alert-info mt-4">
               <i class="fas fa-info-circle me-2"></i>
               <strong>Importante:</strong> Presenta este código QR en la entrada del evento. 
-              También hemos enviado una copia a tu email.
-            </div>
-
-            <div class="alert alert-success mt-3">
-              <i class="fas fa-user-shield me-2"></i>
-              <strong>Para Operadores:</strong> Puedes validar este ticket usando el código 
-              <code class="bg-white px-2 py-1">{{ ticketCode }}</code> o el RUT 
-              <code class="bg-white px-2 py-1">{{ personalData.document }}</code> en el 
-              <router-link to="/operator/login" class="alert-link">Panel de Operador</router-link>.
+              También hemos enviado una copia a tu email. Tu entrada puede ser validada usando el código 
+              <code class="bg-white px-2 py-1">{{ ticketCode }}</code> o tu RUT 
+              <code class="bg-white px-2 py-1">{{ personalData.document }}</code>.
             </div>
 
             <div class="mt-4">
               <button class="btn btn-primary me-3" @click="downloadTicket">
                 <i class="fas fa-download me-2"></i>Descargar Entrada
               </button>
-              <button class="btn btn-outline-primary" @click="startOver">
-                <i class="fas fa-plus me-2"></i>Comprar Otra Entrada
+              <button class="btn btn-outline-danger" @click="startOver">
+                <i class="fas fa-home me-2"></i>Volver al Inicio
               </button>
             </div>
           </div>
@@ -82,7 +78,9 @@ export default {
       selectedEvent, 
       selectedTicket, 
       personalData, 
-      ticketCode 
+      ticketCode,
+      ticketQuantity,
+      totalAmount
     } = storeToRefs(store)
 
     // Verificar que llegamos aquí correctamente
@@ -106,7 +104,8 @@ export default {
           ticketCode.value, 
           selectedEvent.value, 
           selectedTicket.value, 
-          personalData.value
+          personalData.value,
+          ticketQuantity.value
         )
       }
     })
@@ -116,6 +115,8 @@ export default {
       selectedTicket,
       personalData,
       ticketCode,
+      ticketQuantity,
+      totalAmount,
       downloadTicket,
       startOver
     }

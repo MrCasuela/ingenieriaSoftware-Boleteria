@@ -15,13 +15,14 @@ export const qrService = {
     }
   },
 
-  createTicketData(ticketCode, event, ticket, personalData) {
+  createTicketData(ticketCode, event, ticket, personalData, quantity = 1) {
     return {
       ticketCode,
       event: event.name,
       date: event.date,
       location: event.location,
       ticketType: ticket.name,
+      quantity: quantity,
       holder: `${personalData.firstName} ${personalData.lastName}`,
       document: personalData.document,
       timestamp: new Date().toISOString()

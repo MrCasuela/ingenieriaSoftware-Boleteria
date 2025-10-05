@@ -25,13 +25,15 @@
                 <p><strong>Fecha:</strong> {{ selectedEvent.date }}</p>
                 <p><strong>Ubicación:</strong> {{ selectedEvent.location }}</p>
                 <p><strong>Tipo de Entrada:</strong> {{ selectedTicket.name }}</p>
+                <p><strong>Cantidad:</strong> {{ ticketQuantity }} entrada(s)</p>
+                <p><strong>Total Pagado:</strong> ${{ totalAmount }}</p>
                 
                 <hr>
                 <h5 class="mb-3">Datos del Comprador</h5>
                 <p><strong>Nombre:</strong> {{ personalData.firstName }} {{ personalData.lastName }}</p>
                 <p><strong>Email:</strong> {{ personalData.email }}</p>
                 <p><strong>Teléfono:</strong> {{ personalData.phone }}</p>
-                <p><strong>Documento:</strong> {{ personalData.document }}</p>
+                <p><strong>RUT:</strong> {{ personalData.document }}</p>
               </div>
             </div>
             
@@ -72,9 +74,11 @@ export default {
     
     const { 
       selectedEvent, 
-      selectedTicket, 
+      selectedTicket,
+      ticketQuantity,
       personalData, 
-      ticketCode 
+      ticketCode,
+      totalAmount
     } = storeToRefs(store)
 
     // Verificar que llegamos aquí correctamente
@@ -98,7 +102,8 @@ export default {
           ticketCode.value, 
           selectedEvent.value, 
           selectedTicket.value, 
-          personalData.value
+          personalData.value,
+          ticketQuantity.value
         )
       }
     })
@@ -106,8 +111,10 @@ export default {
     return {
       selectedEvent,
       selectedTicket,
+      ticketQuantity,
       personalData,
       ticketCode,
+      totalAmount,
       downloadTicket,
       startOver
     }

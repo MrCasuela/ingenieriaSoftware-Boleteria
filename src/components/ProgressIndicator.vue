@@ -1,5 +1,5 @@
 <template>
-  <div class="container mt-4" v-if="currentStep > 1">
+  <div class="container mt-4" v-if="shouldShowProgress">
     <div class="row justify-content-center">
       <div class="col-md-8">
         <div class="d-flex justify-content-between align-items-center">
@@ -49,6 +49,8 @@
 </template>
 
 <script>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useTicketStore } from '../stores/ticketStore.js'
 import { storeToRefs } from 'pinia'
 
@@ -56,13 +58,20 @@ export default {
   name: 'ProgressIndicator',
   setup() {
     const store = useTicketStore()
+    const route = useRoute()
     const { currentStep, progressWidth } = storeToRefs(store)
     const { getStepClass } = store
+
+    // Solo mostrar el indicador si NO estamos en la página principal
+    const shouldShowProgress = computed(() => {
+      return route.name !== 'EventList' && currentStep.value > 0
+    })
 
     return {
       currentStep,
       progressWidth,
-      getStepClass
+      getStepClass,
+      shouldShowProgress
     }
   }
 }

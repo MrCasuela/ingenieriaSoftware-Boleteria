@@ -19,6 +19,7 @@
 </template>
 
 <script>
+import { onMounted } from 'vue'
 import { useTicketStore } from '../stores/ticketStore.js'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
@@ -38,6 +39,11 @@ export default {
       store.selectEvent(event)
       router.push(`/tickets/${event.id}`)
     }
+
+    // Resetear el progreso cuando se vuelve a la lista de eventos
+    onMounted(() => {
+      store.currentStep = 1
+    })
 
     return {
       events,

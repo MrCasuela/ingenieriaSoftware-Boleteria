@@ -16,6 +16,31 @@
           </div>
         </div>
 
+        <!-- Selector de Cantidad -->
+        <div v-if="selectedTicket" class="card mt-4 p-4">
+          <h5 class="mb-3">Cantidad de Entradas</h5>
+          <div class="d-flex align-items-center justify-content-center">
+            <button 
+              class="btn btn-outline-primary btn-lg" 
+              @click="decreaseQuantity"
+              :disabled="ticketQuantity <= 1"
+            >
+              <i class="fas fa-minus"></i>
+            </button>
+            <span class="mx-4 fs-2 fw-bold">{{ ticketQuantity }}</span>
+            <button 
+              class="btn btn-outline-primary btn-lg" 
+              @click="increaseQuantity"
+              :disabled="ticketQuantity >= selectedTicket.available"
+            >
+              <i class="fas fa-plus"></i>
+            </button>
+          </div>
+          <p class="text-center text-muted mt-3 mb-0">
+            <small>Disponibles: {{ selectedTicket.available }}</small>
+          </p>
+        </div>
+
         <div class="d-flex justify-content-between mt-4">
           <button class="btn btn-outline-secondary" @click="goBack">
             <i class="fas fa-arrow-left me-2"></i>Volver
@@ -37,7 +62,8 @@
             <div v-if="selectedTicket" class="mt-3 p-3 bg-light rounded">
               <h6>Entrada Seleccionada:</h6>
               <p class="mb-1">{{ selectedTicket.name }}</p>
-              <strong class="text-primary">${{ selectedTicket.price }}</strong>
+              <p class="mb-1"><small>${{ selectedTicket.price }} x {{ ticketQuantity }}</small></p>
+              <strong class="text-primary">${{ selectedTicket.price * ticketQuantity }}</strong>
             </div>
           </div>
         </div>
@@ -66,7 +92,7 @@ export default {
   setup(props) {
     const store = useTicketStore()
     const router = useRouter()
-    const { selectedEvent, selectedTicket } = storeToRefs(store)
+    const { selectedEvent, selectedTicket, ticketQuantity } = storeToRefs(store)
 
     // Si no hay evento seleccionado, buscarlo por ID
     if (!selectedEvent.value) {
@@ -82,6 +108,14 @@ export default {
       store.selectTicket(ticket)
     }
 
+    const increaseQuantity = () => {
+      store.increaseQuantity()
+    }
+
+    const decreaseQuantity = () => {
+      store.decreaseQuantity()
+    }
+
     const proceedToPersonalData = () => {
       store.proceedToPersonalData()
       router.push('/personal-data')
@@ -94,7 +128,10 @@ export default {
     return {
       selectedEvent,
       selectedTicket,
+      ticketQuantity,
       selectTicket,
+      increaseQuantity,
+      decreaseQuantity,
       proceedToPersonalData,
       goBack
     }

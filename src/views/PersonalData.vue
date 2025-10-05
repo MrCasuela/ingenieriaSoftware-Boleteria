@@ -25,8 +25,10 @@
             </div>
           </div>
           <div class="mb-3">
-            <label for="document" class="form-label">Documento de Identidad *</label>
-            <input type="text" class="form-control" id="document" v-model="personalData.document" required>
+            <label for="document" class="form-label">RUT *</label>
+            <input type="text" class="form-control" id="document" v-model="personalData.document" 
+                   placeholder="12345678-9" maxlength="10" required
+                   @input="formatRut">
           </div>
           
           <h4 class="mt-4 mb-3">Datos de Pago</h4>
@@ -34,7 +36,8 @@
             <div class="col-md-6 mb-3">
               <label for="cardNumber" class="form-label">Número de Tarjeta *</label>
               <input type="text" class="form-control" id="cardNumber" v-model="paymentData.cardNumber" 
-                     placeholder="1234 5678 9012 3456" maxlength="19" required>
+                     placeholder="1234 5678 9012 3456" maxlength="19" required
+                     @input="formatCardNumber">
             </div>
             <div class="col-md-6 mb-3">
               <label for="cardName" class="form-label">Nombre en la Tarjeta *</label>
@@ -45,12 +48,14 @@
             <div class="col-md-6 mb-3">
               <label for="expiry" class="form-label">Fecha de Vencimiento *</label>
               <input type="text" class="form-control" id="expiry" v-model="paymentData.expiry" 
-                     placeholder="MM/AA" maxlength="5" required>
+                     placeholder="MM/AA" maxlength="5" required
+                     @input="formatExpiry">
             </div>
             <div class="col-md-6 mb-3">
               <label for="cvv" class="form-label">CVV *</label>
               <input type="text" class="form-control" id="cvv" v-model="paymentData.cvv" 
-                     placeholder="123" maxlength="4" required>
+                     placeholder="123" maxlength="3" required
+                     @input="formatCVV">
             </div>
           </div>
 
@@ -80,8 +85,8 @@
           </div>
           <hr class="bg-white">
           <div class="d-flex justify-content-between mb-2">
-            <span>{{ selectedTicket.name }}</span>
-            <span>${{ selectedTicket.price }}</span>
+            <span>{{ selectedTicket.name }} x{{ ticketQuantity }}</span>
+            <span>${{ subtotal }}</span>
           </div>
           <div class="d-flex justify-content-between mb-2">
             <span>Cargos por servicio</span>
@@ -114,11 +119,13 @@ export default {
     
     const { 
       selectedEvent, 
-      selectedTicket, 
+      selectedTicket,
+      ticketQuantity,
       personalData, 
       paymentData, 
       processing, 
-      serviceCharge, 
+      serviceCharge,
+      subtotal,
       totalAmount 
     } = storeToRefs(store)
 
@@ -143,6 +150,78 @@ export default {
       router.push(`/tickets/${selectedEvent.value.id}`)
     }
 
+    // Formatear RUT automáticamente (ej: 12345678-9)
+    const formatRut = (event) => {
+      let value = event.target.value.replace(/[^0-9kK]/g, '') // Solo números y K
+      
+      if (value.length > 1) {
+        // Separar números del dígito verificador
+        const numbers = value.slice(0, -1)
+        const dv = value.slice(-1).toUpperCase()
+        
+        if (numbers.length > 0) {
+          value = `${numbers}-${dv}`
+        }
+      }
+      
+      personalData.value.document = value
+    }
+
+    // Formatear número de tarjeta (ej: 1234 5678 9012 3456)
+    const formatCardNumber = (event) => {
+      let value = event.target.value.replace(/\s/g, '').replace(/\D/g, '') // Solo números
+      
+      // Limitar a 16 dígitos
+      if (value.length > 16) {
+        value = value.substring(0, 16)
+      }
+      
+      // Agregar espacios cada 4 dígitos
+      const formatted = value.replace(/(\d{4})/g, '$1 ').trim()
+      paymentData.value.cardNumber = formatted
+    }
+
+    // Formatear fecha de vencimiento (ej: MM/AA)
+    const formatExpiry = (event) => {
+      let value = event.target.value.replace(/\D/g, '') // Solo números
+      
+      if (value.length >= 2) {
+        // Validar mes (01-12)
+        let month = value.substring(0, 2)
+        if (parseInt(month) > 12) {
+          month = '12'
+        } else if (parseInt(month) < 1 && month.length === 2) {
+          month = '01'
+        }
+        
+        value = month + value.substring(2)
+      }
+      
+      // Limitar a 4 dígitos (MMAA)
+      if (value.length > 4) {
+        value = value.substring(0, 4)
+      }
+      
+      // Agregar barra después del mes
+      if (value.length >= 2) {
+        value = value.substring(0, 2) + '/' + value.substring(2)
+      }
+      
+      paymentData.value.expiry = value
+    }
+
+    // Formatear CVV (solo 3 números)
+    const formatCVV = (event) => {
+      let value = event.target.value.replace(/\D/g, '') // Solo números
+      
+      // Limitar a 3 dígitos
+      if (value.length > 3) {
+        value = value.substring(0, 3)
+      }
+      
+      paymentData.value.cvv = value
+    }
+
     onMounted(() => {
       setupCardNumberFormatting(paymentData.value.cardNumber)
       setupExpiryFormatting(paymentData.value.expiry)
@@ -151,13 +230,19 @@ export default {
     return {
       selectedEvent,
       selectedTicket,
+      ticketQuantity,
       personalData,
       paymentData,
       processing,
       serviceCharge,
+      subtotal,
       totalAmount,
       processPayment,
-      goBack
+      goBack,
+      formatRut,
+      formatCardNumber,
+      formatExpiry,
+      formatCVV
     }
   }
 }

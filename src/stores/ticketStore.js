@@ -5,6 +5,7 @@ export const useTicketStore = defineStore('ticket', {
     currentStep: 1,
     selectedEvent: null,
     selectedTicket: null,
+    ticketQuantity: 1,
     ticketCode: '',
     processing: false,
     serviceCharge: 5.00,
@@ -106,8 +107,13 @@ export const useTicketStore = defineStore('ticket', {
 
   getters: {
     totalAmount: (state) => {
-      if (!state.selectedTicket) return 0
-      return state.selectedTicket.price + state.serviceCharge
+      if (!state.selectedTicket || !state.ticketQuantity) return 0
+      return (state.selectedTicket.price * state.ticketQuantity) + state.serviceCharge
+    },
+
+    subtotal: (state) => {
+      if (!state.selectedTicket || !state.ticketQuantity) return 0
+      return state.selectedTicket.price * state.ticketQuantity
     },
     
     progressWidth: (state) => {
@@ -127,6 +133,19 @@ export const useTicketStore = defineStore('ticket', {
 
     selectTicket(ticket) {
       this.selectedTicket = ticket
+      this.ticketQuantity = 1 // Resetear cantidad al seleccionar nuevo ticket
+    },
+
+    increaseQuantity() {
+      if (this.selectedTicket && this.ticketQuantity < this.selectedTicket.available) {
+        this.ticketQuantity++
+      }
+    },
+
+    decreaseQuantity() {
+      if (this.ticketQuantity > 1) {
+        this.ticketQuantity--
+      }
     },
 
     proceedToPersonalData() {
@@ -166,6 +185,8 @@ export const useTicketStore = defineStore('ticket', {
         evento: this.selectedEvent.name,
         tipo: this.selectedTicket.name,
         precio: this.selectedTicket.price,
+        cantidad: this.ticketQuantity,
+        total: this.totalAmount,
         fecha: this.selectedEvent.date,
         ubicacion: this.selectedEvent.location,
         usado: false,

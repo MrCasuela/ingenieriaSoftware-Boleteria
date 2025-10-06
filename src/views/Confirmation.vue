@@ -1,12 +1,14 @@
 <template>
-  <div class="container mt-5">
-    <div class="row justify-content-center">
-      <div class="col-md-8 text-center">
-        <div class="alert alert-success" role="alert">
-          <i class="fas fa-check-circle fa-3x mb-3"></i>
-          <h3>¡Compra Exitosa!</h3>
-          <p>Tu entrada ha sido procesada correctamente.</p>
-        </div>
+  <div>
+    <HomeButton position="top-right" />
+    <div class="container mt-5">
+      <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+          <div class="alert alert-success" role="alert">
+            <i class="fas fa-check-circle fa-3x mb-3"></i>
+            <h3>¡Compra Exitosa!</h3>
+            <p>Tu entrada ha sido procesada correctamente.</p>
+          </div>
 
         <div class="card mt-4">
           <div class="card-body">
@@ -62,6 +64,7 @@
       </div>
     </div>
   </div>
+  </div>
 </template>
 
 <script>
@@ -70,9 +73,13 @@ import { useTicketStore } from '../stores/ticketStore.js'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useQRGenerator } from '../composables/useQRGenerator.js'
+import HomeButton from '../components/HomeButton.vue'
 
 export default {
   name: 'Confirmation',
+  components: {
+    HomeButton
+  },
   setup() {
     const store = useTicketStore()
     const router = useRouter()
@@ -122,3 +129,7 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+/* Estilos específicos de Confirmation si son necesarios */
+</style>

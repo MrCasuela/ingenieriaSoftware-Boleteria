@@ -1,7 +1,9 @@
 <template>
-  <div class="container mt-5">
-    <div class="row">
-      <div class="col-md-8">
+  <div>
+    <HomeButton position="top-center" />
+    <div class="container mt-5">
+      <div class="row">
+        <div class="col-md-8">
         <h2 class="mb-4">{{ selectedEvent.name }}</h2>
         <p class="text-muted mb-4">{{ selectedEvent.description }}</p>
         
@@ -44,6 +46,7 @@
       </div>
     </div>
   </div>
+  </div>
 </template>
 
 <script>
@@ -51,11 +54,13 @@ import { useTicketStore } from '../stores/ticketStore.js'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import TicketCard from '../components/TicketCard.vue'
+import HomeButton from '../components/HomeButton.vue'
 
 export default {
   name: 'TicketSelection',
   components: {
-    TicketCard
+    TicketCard,
+    HomeButton
   },
   props: {
     eventId: {
@@ -101,3 +106,7 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+/* Estilos específicos de TicketSelection si son necesarios */
+</style>

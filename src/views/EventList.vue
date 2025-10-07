@@ -19,6 +19,7 @@
 </template>
 
 <script>
+import { onMounted } from 'vue'
 import { useTicketStore } from '../stores/ticketStore.js'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
@@ -33,6 +34,11 @@ export default {
     const store = useTicketStore()
     const router = useRouter()
     const { events } = storeToRefs(store)
+
+    // Resetear el store cuando se vuelve a la página principal
+    onMounted(() => {
+      store.resetStore()
+    })
 
     const selectEvent = (event) => {
       store.selectEvent(event)

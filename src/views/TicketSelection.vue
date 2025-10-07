@@ -18,6 +18,33 @@
           </div>
         </div>
 
+        <!-- Selector de cantidad -->
+        <div v-if="selectedTicket" class="card mt-3">
+          <div class="card-body">
+            <h5 class="mb-3">Cantidad de Entradas</h5>
+            <div class="d-flex align-items-center justify-content-between">
+              <button 
+                class="btn btn-outline-secondary" 
+                @click="decreaseQuantity" 
+                :disabled="ticketQuantity <= 1"
+              >
+                <i class="fas fa-minus"></i>
+              </button>
+              <div class="text-center mx-3">
+                <h3 class="mb-0">{{ ticketQuantity }}</h3>
+                <small class="text-muted">Disponibles: {{ selectedTicket.available }}</small>
+              </div>
+              <button 
+                class="btn btn-outline-secondary" 
+                @click="increaseQuantity" 
+                :disabled="ticketQuantity >= selectedTicket.available"
+              >
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="d-flex justify-content-between mt-4">
           <button class="btn btn-outline-secondary" @click="goBack">
             <i class="fas fa-arrow-left me-2"></i>Volver
@@ -38,8 +65,9 @@
             <p><strong>Ubicación:</strong> {{ selectedEvent.location }}</p>
             <div v-if="selectedTicket" class="mt-3 p-3 bg-light rounded">
               <h6>Entrada Seleccionada:</h6>
-              <p class="mb-1">{{ selectedTicket.name }}</p>
-              <strong class="text-primary">${{ selectedTicket.price }}</strong>
+              <p class="mb-1">{{ selectedTicket.name }} x{{ ticketQuantity }}</p>
+              <p class="mb-1 text-muted">${{ selectedTicket.price }} c/u</p>
+              <strong class="text-primary">Subtotal: ${{ subtotal }}</strong>
             </div>
           </div>
         </div>
@@ -71,7 +99,7 @@ export default {
   setup(props) {
     const store = useTicketStore()
     const router = useRouter()
-    const { selectedEvent, selectedTicket } = storeToRefs(store)
+    const { selectedEvent, selectedTicket, ticketQuantity, subtotal } = storeToRefs(store)
 
     // Si no hay evento seleccionado, buscarlo por ID
     if (!selectedEvent.value) {
@@ -96,12 +124,24 @@ export default {
       router.push('/')
     }
 
+    const increaseQuantity = () => {
+      store.increaseQuantity()
+    }
+
+    const decreaseQuantity = () => {
+      store.decreaseQuantity()
+    }
+
     return {
       selectedEvent,
       selectedTicket,
+      ticketQuantity,
+      subtotal,
       selectTicket,
       proceedToPersonalData,
-      goBack
+      goBack,
+      increaseQuantity,
+      decreaseQuantity
     }
   }
 }

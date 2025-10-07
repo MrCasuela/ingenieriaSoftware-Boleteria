@@ -1,6 +1,5 @@
 <template>
   <div>
-    <HomeButton position="top-right" />
     <div class="container mt-5">
       <div class="row">
         <div class="col-md-8">
@@ -113,13 +112,9 @@ import { useTicketStore } from '../stores/ticketStore.js'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useFormFormatting } from '../composables/useFormFormatting.js'
-import HomeButton from '../components/HomeButton.vue'
 
 export default {
   name: 'PersonalData',
-  components: {
-    HomeButton
-  },
   setup() {
     const store = useTicketStore()
     const router = useRouter()

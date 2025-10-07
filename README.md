@@ -6,9 +6,7 @@ Un sistema moderno de compra de entradas con código QR único desarrollado con 
 
 **ING-1-HU1**: Como cliente quiero comprar una entrada y recibir un código QR único con mis datos personales para poder ingresar al evento en menos de 2 minutos.
 
-**ING-4-HU3**: Como operador q---
-
-## 🚀 Próximos Pasos Sugeridosro escanear el código QR o carnet con la tablet para confirmar si la persona puede ingresar al evento y entregar la pulsera.
+**ING-4-HU3**: Como operador quiero escanear el código QR o carnet con la tablet para confirmar si la persona puede ingresar al evento y entregar la pulsera.
 
 ---
 
@@ -17,11 +15,13 @@ Un sistema moderno de compra de entradas con código QR único desarrollado con 
 - [Características](#-características)
 - [Instalación y Uso](#-instalación-y-uso)
 - [Sistema de Operadores](#-sistema-de-operadores)
+- [Sistema de Seguridad](#-sistema-de-seguridad-mejorado)
 - [Rutas del Sistema](#-rutas-del-sistema)
 - [localStorage](#️-localstorage)
 - [Estructura del Proyecto](#️-estructura-del-proyecto)
-- [Comandos de Consola](#-comandos-de-consola-útiles)
 - [Tecnologías](#️-tecnologías-utilizadas)
+
+> **📖 Para información detallada sobre seguridad, consulta:** [SECURITY_GUIDE.md](./SECURITY_GUIDE.md)
 
 ---
 
@@ -38,15 +38,31 @@ Un sistema moderno de compra de entradas con código QR único desarrollado con 
 - ✅ **Diseño responsivo** con Bootstrap 5
 - ✅ **Proceso de compra** en menos de 2 minutos
 - ✅ **Almacenamiento automático** de tickets en localStorage
+- ✅ **Botón Home global** con navegación rápida desde cualquier vista
 
 ### Operador
 - ✅ **Panel de control** dedicado para validación de tickets
-- ✅ **Autenticación** con sesión persistente
-- ✅ **Escaneo QR** mediante cámara (simulado)
+- ✅ **Autenticación** con sesión persistente (24 horas)
+- ✅ **Escaneo QR mejorado** con sistema de seguridad avanzado
 - ✅ **Validación manual** por código o RUT
 - ✅ **Dashboard con estadísticas** en tiempo real
 - ✅ **Control de tickets usados** para evitar duplicados
 - ✅ **Interfaz intuitiva** adaptada a tablets
+- ✅ **Sistema de auditoría** completo con registro de operaciones
+- ✅ **Detección de fraudes** y códigos falsificados
+- ✅ **Feedback visual/sonoro** con vibración en validaciones
+- ✅ **Verificación de checksums** para integridad de códigos QR
+
+### 🔒 Seguridad
+
+- ✅ **Códigos QR con checksum** - Formato: `TKT-XXXXX-XXXX` (checksum de 4 dígitos)
+- ✅ **Validación de integridad** - Detección de códigos alterados o falsificados
+- ✅ **Control de escaneos duplicados** - Prevención de reutilización (caché de 5 minutos)
+- ✅ **Registro de auditoría** - Todas las validaciones quedan registradas con timestamp
+- ✅ **Detección de actividad sospechosa** - Alertas por múltiples intentos fallidos
+- ✅ **Encriptación de sesiones** - Tokens de sesión cifrados para operadores
+- ✅ **Fingerprinting de dispositivos** - Identificación única de tablets
+- ✅ **Sanitización de entradas** - Prevención de inyecciones
 
 ---
 
@@ -236,6 +252,115 @@ Almacena la sesión del operador actual (válida por 24 horas).
 }
 ```
 
+#### 4. `eventsData` - Eventos y Disponibilidad
+Almacena los eventos y la cantidad disponible de tickets (se actualiza después de cada compra).
+
+#### 5. `scanAudits` - Registro de Auditoría (🆕)
+Registra todas las validaciones de tickets para seguridad y análisis.
+
+**Estructura:**
+```javascript
+{
+  id: "AUD-1728043200000-A1B2C3",
+  ticketCode: "TKT-XXXXX-XXXX",
+  operator: "operador1",
+  success: true,
+  timestamp: 1728043200000,
+  datetime: "2025-10-04T12:30:00.000Z",
+  deviceFingerprint: {
+    userAgent: "Mozilla/5.0...",
+    platform: "Win32",
+    language: "es-ES",
+    screenResolution: "1920x1080"
+  },
+  details: {
+    message: "✅ Ticket válido - Acceso autorizado",
+    ticketInfo: { /* datos del ticket */ },
+    fraudDetected: false,
+    validationType: "qr" // o "manual"
+  }
+}
+```
+
+#### 6. `recentScans` - Escaneos Recientes (🆕)
+Caché de escaneos de los últimos 5 minutos para detectar duplicados.
+
+**Estructura:**
+```javascript
+{
+  code: "TKT-XXXXX-XXXX",
+  operator: "operador1",
+  timestamp: 1728043200000
+}
+```
+
+---
+
+## 🔒 Sistema de Seguridad Mejorado
+
+### Servicios de Seguridad
+
+#### `qrSecurityService.js` - Seguridad de Códigos QR
+
+**Funciones principales:**
+- `generateSecureCode()` - Genera códigos QR con checksum (formato: TKT-XXXXX-XXXX)
+- `validateFormat(code)` - Valida el formato del código QR
+- `verifyChecksum(code)` - Verifica integridad del código
+- `checkRecentScans(code)` - Detecta escaneos duplicados en 5 minutos
+- `validateIntegrity(ticketData)` - Valida que el ticket no haya sido alterado
+- `detectSuspiciousActivity(code, operator)` - Detecta patrones sospechosos
+- `encryptData()` / `decryptData()` - Encriptación simple de datos
+- `generateSessionToken(operatorId)` - Tokens de sesión seguros
+
+#### `auditService.js` - Auditoría y Análisis
+
+**Funciones principales:**
+- `logValidation(ticketCode, operator, success, details)` - Registra cada validación
+- `getAuditHistory(filters)` - Obtiene historial con filtros
+- `getStatistics(operator)` - Estadísticas de validaciones
+- `getSuspiciousActivity()` - Reportes de actividad sospechosa
+- `getOperatorMetrics(operator)` - Métricas de rendimiento por operador
+- `exportToCSV()` - Exporta auditorías a CSV
+- `cleanOldAudits()` - Limpia registros antiguos (>30 días)
+
+### Validación de Códigos QR
+
+El sistema ahora incluye múltiples capas de validación:
+
+1. **Sanitización** - Limpieza de entrada del usuario
+2. **Validación de formato** - Verifica patrón TKT-XXXXX-XXXX
+3. **Verificación de checksum** - Detecta códigos alterados
+4. **Control de duplicados** - Previene escaneos múltiples
+5. **Búsqueda en base de datos** - Verifica existencia del ticket
+6. **Validación de integridad** - Verifica fechas y datos coherentes
+7. **Verificación de uso** - Comprueba si ya fue utilizado
+8. **Registro de auditoría** - Guarda log de la operación
+
+### Detección de Fraudes
+
+El sistema detecta automáticamente:
+- ❌ Códigos QR falsificados (checksum inválido)
+- ❌ Intentos de reutilización (escaneos duplicados)
+- ❌ Tickets con fechas incoherentes
+- ❌ Múltiples intentos fallidos
+- ❌ Códigos alterados manualmente
+
+### Feedback Mejorado
+
+**Visual:**
+- ✅ Verde para validaciones exitosas
+- ❌ Rojo para errores
+- 🚨 Rojo parpadeante para fraudes
+
+**Sonoro:**
+- 🔊 Sonido de éxito (beep corto)
+- 🔊 Sonido de error (beep largo)
+
+**Táctil:**
+- 📳 Vibración corta (100ms) para éxito
+- 📳 Vibración doble (200ms-100ms-200ms) para error
+- 📳 Vibración múltiple para fraudes
+
 ---
 
 ## 🏗️ Estructura del Proyecto
@@ -422,6 +547,7 @@ console.log(getTicketStats())
 - **ProgressIndicator.vue** - Indicador de progreso del proceso de compra
 - **EventCard.vue** - Tarjeta individual de evento
 - **TicketCard.vue** - Tarjeta de tipo de entrada
+- **HomeButton.vue** - Botón de navegación rápida a la página principal (nuevo) 📖 [Ver guía completa](./HOME_BUTTON_GUIDE.md)
 
 ### Vistas
 **Cliente:**

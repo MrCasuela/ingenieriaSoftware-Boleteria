@@ -1,6 +1,5 @@
 <template>
   <div>
-    <HomeButton position="top-center" />
     <div class="container mt-5">
       <div class="row">
         <div class="col-md-8">
@@ -82,13 +81,11 @@ import { useTicketStore } from '../stores/ticketStore.js'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import TicketCard from '../components/TicketCard.vue'
-import HomeButton from '../components/HomeButton.vue'
 
 export default {
   name: 'TicketSelection',
   components: {
-    TicketCard,
-    HomeButton
+    TicketCard
   },
   props: {
     eventId: {

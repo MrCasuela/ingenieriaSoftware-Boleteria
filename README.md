@@ -1,6 +1,23 @@
-# Sistema de Boletería - Vue.js
+# Sistema de Boletería - TicketVue
 
-Un sistema moderno de compra de entradas con código QR único desarrollado con Vue.js 3, Vue Router y Pinia. Incluye **sistema completo de control de acceso para operadores** con validación de tickets mediante escaneo QR o ingreso manual.
+Un sistema moderno y completo de compra de entradas con código QR único. **Frontend** desarrollado con Vue.js 3 + **Backend** con Node.js, Express y MySQL. Incluye sistema completo de control de acceso para operadores con validación de tickets mediante escaneo QR o ingreso manual.
+
+## 🏗️ Arquitectura del Sistema
+
+### Frontend (Vue.js 3)
+- **Framework**: Vue 3 con Composition API
+- **Estado Global**: Pinia
+- **Routing**: Vue Router 4
+- **UI Framework**: Bootstrap 5
+- **QR Generation**: QRCode.js
+
+### Backend (Node.js + Express + MySQL)
+- **Runtime**: Node.js 16+
+- **Framework**: Express.js
+- **Base de Datos**: MySQL 8.0+
+- **ORM**: Sequelize
+- **Autenticación**: JWT + bcrypt
+- **Arquitectura**: REST API con herencia de clases
 
 ## 🎯 Historias de Usuario
 
@@ -14,33 +31,36 @@ Un sistema moderno de compra de entradas con código QR único desarrollado con 
 
 - [Características](#-características)
 - [Instalación y Uso](#-instalación-y-uso)
+- [Backend Setup](#-backend-setup)
 - [Sistema de Operadores](#-sistema-de-operadores)
 - [Sistema de Seguridad](#-sistema-de-seguridad-mejorado)
+- [Modelo de Datos](#-modelo-de-datos)
 - [Rutas del Sistema](#-rutas-del-sistema)
-- [localStorage](#️-localstorage)
 - [Estructura del Proyecto](#️-estructura-del-proyecto)
 - [Tecnologías](#️-tecnologías-utilizadas)
 
 > **📖 Para información detallada sobre seguridad, consulta:** [SECURITY_GUIDE.md](./SECURITY_GUIDE.md)
+> **📖 Para información del backend, consulta:** [backend/README.md](./backend/README.md)
 
 ---
 
 ## ✨ Características
 
-### Cliente
+### Cliente (Frontend)
 - ✅ **Arquitectura Vue Modular** con separación de responsabilidades
 - ✅ **4 Vistas principales**: Lista de eventos, Selección de entradas, Datos personales, Confirmación
 - ✅ **Código QR único** generado con datos del ticket y comprador
 - ✅ **Estado global** con Pinia para manejo de datos
 - ✅ **Routing** con Vue Router para navegación entre vistas
 - ✅ **Componentes reutilizables** (EventCard, TicketCard, etc.)
-- ✅ **Validación de formularios** y formateo automático
+- ✅ **Validación de formularios** y formateo automático (RUT, tarjeta, etc.)
+- ✅ **Selector de cantidad** de entradas con límites
 - ✅ **Diseño responsivo** con Bootstrap 5
 - ✅ **Proceso de compra** en menos de 2 minutos
 - ✅ **Almacenamiento automático** de tickets en localStorage
 - ✅ **Botón Home global** con navegación rápida desde cualquier vista
 
-### Operador
+### Operador (Frontend)
 - ✅ **Panel de control** dedicado para validación de tickets
 - ✅ **Autenticación** con sesión persistente (24 horas)
 - ✅ **Escaneo QR mejorado** con sistema de seguridad avanzado
@@ -48,6 +68,17 @@ Un sistema moderno de compra de entradas con código QR único desarrollado con 
 - ✅ **Dashboard con estadísticas** en tiempo real
 - ✅ **Control de tickets usados** para evitar duplicados
 - ✅ **Interfaz intuitiva** adaptada a tablets
+
+### Backend (API)
+- ✅ **Arquitectura REST** con Express.js
+- ✅ **Base de datos MySQL** con Sequelize ORM
+- ✅ **Herencia de clases** (Usuario → Cliente, Operador, Administrador)
+- ✅ **Single Table Inheritance** para eficiencia
+- ✅ **Autenticación JWT** con tokens seguros
+- ✅ **Encriptación bcrypt** para contraseñas
+- ✅ **Relaciones completas** entre entidades
+- ✅ **Validación de datos** a nivel de modelo
+- ✅ **Escalabilidad** para futuros módulos
 - ✅ **Sistema de auditoría** completo con registro de operaciones
 - ✅ **Detección de fraudes** y códigos falsificados
 - ✅ **Feedback visual/sonoro** con vibración en validaciones
@@ -68,7 +99,9 @@ Un sistema moderno de compra de entradas con código QR único desarrollado con 
 
 ## 🚀 Instalación y Uso
 
-### Configuración Inicial
+### Frontend (Vue.js)
+
+#### Configuración Inicial
 
 1. **Instalar dependencias** (solo la primera vez):
 ```bash
@@ -85,7 +118,7 @@ npm run dev
 http://localhost:3003/
 ```
 
-### Build para Producción
+#### Build para Producción
 
 ```bash
 npm run build
@@ -93,7 +126,7 @@ npm run build
 
 Los archivos optimizados se generan en la carpeta `dist/`
 
-### Probar en Móvil/Tablet
+#### Probar en Móvil/Tablet
 
 1. Averigua tu IP local:
    ```bash
@@ -108,6 +141,123 @@ Los archivos optimizados se generan en la carpeta `dist/`
    ```
    http://TU_IP_LOCAL:3003
    ```
+
+---
+
+## 🔧 Backend Setup
+
+### Prerrequisitos
+
+- Node.js 16+ instalado
+- MySQL 8.0+ instalado y corriendo
+- npm o yarn
+
+### Instalación
+
+1. **Navegar a la carpeta backend**:
+```bash
+cd backend
+```
+
+2. **Instalar dependencias**:
+```bash
+npm install
+```
+
+3. **Configurar variables de entorno**:
+```bash
+# Copiar archivo de ejemplo
+cp .env.example .env
+
+# Editar .env con tus configuraciones
+```
+
+Ejemplo de `.env`:
+```env
+PORT=3000
+NODE_ENV=development
+
+# MySQL Database
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=ticketvue
+DB_USER=root
+DB_PASSWORD=tu_contraseña_mysql
+
+# JWT
+JWT_SECRET=clave_super_secreta_cambiar_en_produccion
+JWT_EXPIRE=7d
+```
+
+4. **Crear base de datos**:
+```sql
+CREATE DATABASE ticketvue CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+O ejecutar el script SQL incluido:
+```bash
+mysql -u root -p < database-schema.sql
+```
+
+5. **Iniciar servidor**:
+```bash
+# Desarrollo (con auto-reload)
+npm run dev
+
+# Producción
+npm start
+```
+
+El servidor estará disponible en `http://localhost:3000`
+
+### Verificar instalación
+
+```bash
+# Probar endpoint de salud
+curl http://localhost:3000/
+
+# Respuesta esperada:
+# {
+#   "success": true,
+#   "message": "TicketVue API - Sistema de Boletería",
+#   "version": "1.0.0"
+# }
+```
+
+---
+
+## 📊 Modelo de Datos
+
+### Herencia de Usuarios
+
+El sistema implementa **Single Table Inheritance** donde todos los tipos de usuarios se almacenan en una sola tabla `users` con un campo discriminador `user_type`:
+
+```
+Usuario (Clase Base)
+├── Cliente        (compra tickets)
+├── Operador       (valida tickets)
+└── Administrador  (gestiona eventos)
+```
+
+### Relaciones Principales
+
+```
+Event          (1:N) TicketType
+Event          (1:N) Ticket
+TicketType     (1:N) Ticket
+Cliente        (1:N) Ticket (como comprador)
+Operador       (1:N) Ticket (como validador)
+Administrador  (1:N) Event (como organizador)
+```
+
+### Tablas
+
+- **users**: Almacena Cliente, Operador y Administrador (con campos específicos)
+- **events**: Eventos disponibles
+- **ticket_types**: Tipos de entrada por evento
+- **tickets**: Entradas compradas
+
+Ver detalles completos en [backend/README.md](./backend/README.md)
 
 ---
 

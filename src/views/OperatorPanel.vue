@@ -1,12 +1,31 @@
 <template>
   <div class="operator-container">
-    <div class="container">
-      <div class="header">
-        <h1>Control de Acceso</h1>
-        <p>{{ selectedEvent }} - Operador: {{ operatorName }}</p>
-        <button class="btn-logout" @click="handleLogout">Cerrar Sesión</button>
+    <!-- Mensaje cuando no está autenticado -->
+    <div v-if="!authStore.isAuthenticated" class="not-authenticated">
+      <div class="auth-message">
+        <div class="auth-icon">🔒</div>
+        <h2>Acceso Restringido</h2>
+        <p>Debes iniciar sesión como operador para acceder a este panel.</p>
+        <p class="redirect-message">Redirigiendo al login...</p>
       </div>
+    </div>
 
+    <!-- Contenido del panel (solo si está autenticado) -->
+    <template v-else>
+      <HomeButton position="top-left" />
+      <!-- Header -->
+      <div class="operator-header">
+      <div class="header-content">
+        <div class="operator-info">
+          <h1>Panel de Operador</h1>
+          <p class="operator-name">Bienvenido, {{ operatorName }}</p>
+          <p class="event-info">{{ selectedEvent }}</p>
+        </div>
+        <button @click="logout" class="logout-btn">
+          🚪 Cerrar Sesión
+        </button>
+      </div>
+    </div>    <div class="container">
       <div class="content">
         <!-- Barra de Estado -->
         <div class="status-bar">
@@ -37,43 +56,54 @@
           </div>
           <div class="scan-controls">
             <button 
-              class="btn btn-primary" 
-              @click="startScanning" 
-              v-if="!isScanning"
+              class="scan-btn" 
+              @click="isScanning ? stopScanning() : startScanning()"
+              :class="{ active: isScanning }"
+              :disabled="isScanning && qrDetected"
             >
-              📷 Escanear Código QR
+              {{ isScanning ? (qrDetected ? '⏳ Procesando...' : '⏹ Detener') : '▶ Iniciar Escaneo' }}
             </button>
-            <button 
-              class="btn btn-secondary" 
-              @click="stopScanning" 
-              v-if="isScanning"
-            >
-              ⏹️ Detener
-            </button>
+            
+            <div v-if="isScanning" class="scan-info">
+              <div class="scan-status">
+                <span class="pulse"></span>
+                {{ scanStatusMessage }}
+              </div>
+              <div class="scan-progress">
+                <div class="progress-info">
+                  <span>🔍 Intento {{ scanAttempts }}/10</span>
+                  <span style="margin-left: 15px;">⏰ {{ remainingTime }}s restantes</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Validación Manual -->
+        <!-- Sección de Entrada Manual -->
         <div class="manual-section">
-          <div class="manual-title">Validación Manual</div>
+          <div class="manual-title">Ingreso Manual de Código</div>
+          <div class="input-group">
+            <input 
+              v-model="manualInput" 
+              type="text" 
+              placeholder="Ingrese código del ticket..." 
+              class="manual-input"
+              @keyup.enter="validateManual"
+            >
+            <button @click="validateManual" class="validate-btn">
+              🔍 Validar
+            </button>
+          </div>
+          
           <div class="instructions">
-            <h3>Instrucciones de Validación:</h3>
+            <p><strong>💡 Instrucciones:</strong></p>
             <ul>
-              <li>Escanear código QR o ingresar manualmente el código del ticket</li>
-              <li>Verificar identidad con RUT del asistente</li>
-              <li>Validar y entregar pulsera de acceso</li>
+              <li>Use el escaneo QR para validación automática</li>
+              <li>Si el código QR no funciona, ingrese manualmente el código</li>
+              <li>Los códigos válidos tienen el formato: TKT-XXXXX</li>
+              <li>El sistema verificará automáticamente si el ticket ya fue usado</li>
             </ul>
           </div>
-          <div class="input-group">
-            <label>Ingrese el código o RUT del asistente:</label>
-            <input
-              type="text"
-              v-model="manualInput"
-              placeholder="TKT-12345678 o 12.345.678-9"
-              @keyup.enter="validateManual"
-            />
-          </div>
-          <button class="btn btn-primary" @click="validateManual">Validar</button>
         </div>
       </div>
     </div>
@@ -82,16 +112,14 @@
     <div class="result-modal" :class="{ active: showModal }" @click="closeModalOnBackdrop">
       <div class="result-content" @click.stop>
         <div class="result-icon" :class="{ success: validationResult.success, error: !validationResult.success }">
-          {{ validationResult.success ? '✓' : '✕' }}
+          {{ validationResult.success ? '✅' : '❌' }}
         </div>
-        <div class="result-title">{{ validationResult.title }}</div>
-        <div class="result-message">{{ validationResult.message }}</div>
-
-        <div class="user-info" v-if="validationResult.ticket">
-          <div class="user-info-item">
-            <span class="user-info-label">RUT:</span>
-            <span class="user-info-value">{{ validationResult.ticket.rut }}</span>
-          </div>
+        
+        <h3 class="result-title">{{ validationResult.title }}</h3>
+        <p class="result-message">{{ validationResult.message }}</p>
+        
+        <div v-if="validationResult.success && validationResult.ticket" class="user-info">
+          <h4>Información del Ticket:</h4>
           <div class="user-info-item">
             <span class="user-info-label">Nombre:</span>
             <span class="user-info-value">{{ validationResult.ticket.nombre }}</span>
@@ -113,21 +141,65 @@
         <button class="btn btn-primary" @click="closeModal">Continuar</button>
       </div>
     </div>
+  </template>
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { useTicketStore } from '../stores/ticketStore'
+import QRSecurityService from '../services/qrSecurityService'
+import AuditService from '../services/auditService'
+import HomeButton from '../components/HomeButton.vue'
 
 export default {
   name: 'OperatorPanel',
+  components: {
+    HomeButton
+  },
   setup() {
     const router = useRouter()
     const authStore = useAuthStore()
     const ticketStore = useTicketStore()
+    
+    // Verificar autenticación al cargar el componente
+    if (!authStore.isAuthenticated) {
+      console.log('❌ Usuario no autenticado, redirigiendo en 2 segundos...')
+      // Redirigir después de 2 segundos para mostrar el mensaje
+      setTimeout(() => {
+        router.push('/operator/login')
+      }, 2000)
+      
+      // Retornar valores mínimos para evitar errores en el template
+      return {
+        authStore,
+        operatorName: computed(() => ''),
+        selectedEvent: computed(() => ''),
+        tickets: computed(() => []),
+        stats: computed(() => ({ total: 0, usados: 0, disponibles: 0 })),
+        isScanning: ref(false),
+        showModal: ref(false),
+        validationResult: ref({ success: false, title: '', message: '', ticket: null }),
+        scanAttempts: ref(0),
+        qrDetected: ref(false),
+        remainingTime: ref(15),
+        scanStatusMessage: computed(() => ''),
+        manualInput: ref(''),
+        videoElement: ref(null),
+        logout: () => router.push('/operator-login'),
+        startScanning: () => {},
+        stopScanning: () => {},
+        validateManual: () => {},
+        closeModal: () => {},
+        closeModalOnBackdrop: () => {},
+        handleLogout: () => router.push('/operator-login')
+      }
+    }
+    
+    console.log('✅ Operador autenticado:', authStore.operatorName)
+    console.log('📊 Tickets disponibles:', ticketStore.tickets?.length || 0)
 
     const videoElement = ref(null)
     const isScanning = ref(false)
@@ -140,104 +212,435 @@ export default {
       message: '',
       ticket: null
     })
+    const scanTimeout = ref(null)
+    const scanAttempts = ref(0)
+    const maxScanTime = 15000
+    const qrDetected = ref(false)
+    const remainingTime = ref(15)
 
     const operatorName = computed(() => authStore.operatorName)
     const selectedEvent = computed(() => 'Control de Eventos')
-
     const stats = computed(() => ticketStore.getTicketStats())
+    const tickets = computed(() => ticketStore.tickets)
+    
+    const scanStatusMessage = computed(() => {
+      if (!isScanning.value) return ''
+      
+      if (qrDetected.value) {
+        return '✅ Código QR detectado! Procesando...'
+      }
+      
+      if (scanAttempts.value === 0) {
+        return 'Iniciando escaneo... Apunte el código QR hacia la cámara'
+      }
+      
+      return '🔍 Buscando código QR... Mantenga el código visible y estable'
+    })
+    
+    const updateRemainingTime = () => {
+      if (!isScanning.value) return
+      
+      remainingTime.value--
+      
+      if (remainingTime.value <= 0) {
+        console.log('⏰ Tiempo de escaneo agotado')
+        stopScanning()
+        showResult('❌ Tiempo Agotado', 'No se pudo detectar un código QR en el tiempo establecido. Intente nuevamente o use ingreso manual.', false)
+      }
+    }
+
+    const startQRDetection = () => {
+      if (!isScanning.value) return
+      
+      scanAttempts.value++
+      console.log(`🔍 Intento de detección QR ${scanAttempts.value}/10`)
+      
+      // Simular detección con probabilidad creciente
+      const baseChance = 0.1 // 10% base
+      const attemptBonus = scanAttempts.value * 0.05 // +5% por intento
+      const detectionChance = Math.min(baseChance + attemptBonus, 0.7) // Máximo 70%
+      
+      if (Math.random() < detectionChance) {
+        console.log('✅ Código QR detectado!')
+        qrDetected.value = true
+        
+        // Simular procesamiento
+        setTimeout(() => {
+          if (isScanning.value) {
+            simulateQRDetection()
+          }
+        }, 1000)
+      } else if (scanAttempts.value >= 10) {
+        console.log('❌ Máximo de intentos alcanzado')
+        stopScanning()
+        showResult('❌ Escaneo Fallido', 'No se pudo detectar un código QR después de múltiples intentos. Use ingreso manual.', false)
+      }
+    }
+
+    const simulateQRDetection = () => {
+      const scenarios = [
+        { weight: 50, type: 'valid' },
+        { weight: 30, type: 'used' },
+        { weight: 10, type: 'invalid' },
+        { weight: 5, type: 'corrupted' },
+        { weight: 5, type: 'fraud' } // Nuevo: intento de fraude
+      ]
+      
+      const random = Math.random() * 100
+      let cumulative = 0
+      let selectedScenario = scenarios[0]
+      
+      for (const scenario of scenarios) {
+        cumulative += scenario.weight
+        if (random <= cumulative) {
+          selectedScenario = scenario
+          break
+        }
+      }
+      
+      console.log(`🎯 Escenario QR seleccionado: ${selectedScenario.type}`)
+      
+      stopScanning()
+      
+      let ticketCode = ''
+      let validationResult = null
+      
+      switch (selectedScenario.type) {
+        case 'valid':
+          const validTicket = ticketStore.tickets.find(t => !t.usado)
+          if (validTicket) {
+            ticketCode = validTicket.codigo
+            validationResult = ticketStore.validateTicket(ticketCode, authStore.operatorName)
+            
+            if (validationResult.valid) {
+              ticketStore.markTicketAsUsed(ticketCode)
+              playSuccessSound()
+              vibrateDevice([100])
+            } else {
+              playErrorSound()
+              vibrateDevice([200, 100, 200])
+            }
+            
+            // Registrar en auditoría
+            AuditService.logValidation(
+              ticketCode,
+              authStore.operatorName,
+              validationResult.valid,
+              {
+                message: validationResult.message,
+                ticketInfo: validationResult.ticket,
+                fraudDetected: validationResult.fraudDetected || false,
+                validationType: 'qr'
+              }
+            )
+            
+            showResult(
+              validationResult.valid ? '✅ Ticket Válido' : '❌ Error de Validación',
+              validationResult.message,
+              validationResult.valid,
+              validationResult.ticket
+            )
+          } else {
+            playErrorSound()
+            showResult('❌ Sin Tickets', 'No hay tickets válidos disponibles para probar.', false)
+          }
+          break
+          
+        case 'used':
+          const usedTicket = ticketStore.tickets.find(t => t.usado)
+          if (usedTicket) {
+            ticketCode = usedTicket.codigo
+            playErrorSound()
+            vibrateDevice([200, 100, 200])
+            
+            AuditService.logValidation(
+              ticketCode,
+              authStore.operatorName,
+              false,
+              {
+                message: 'Ticket ya utilizado',
+                ticketInfo: usedTicket,
+                fraudDetected: false,
+                validationType: 'qr'
+              }
+            )
+            
+            const usedDate = usedTicket.fechaUso ? new Date(usedTicket.fechaUso).toLocaleString() : 'Fecha desconocida'
+            showResult(
+              '⚠️ Ticket Ya Utilizado',
+              `Este ticket ya fue usado el ${usedDate}. No se permite el ingreso.`,
+              false,
+              usedTicket
+            )
+          }
+          break
+          
+        case 'invalid':
+          ticketCode = 'TKT-INVALID'
+          playErrorSound()
+          vibrateDevice([200, 100, 200])
+          
+          AuditService.logValidation(
+            ticketCode,
+            authStore.operatorName,
+            false,
+            {
+              message: 'Código QR inválido',
+              fraudDetected: false,
+              validationType: 'qr'
+            }
+          )
+          
+          showResult(
+            '❌ Ticket Inválido',
+            'El código QR no corresponde a un ticket válido o ha expirado.',
+            false
+          )
+          break
+          
+        case 'corrupted':
+          ticketCode = 'TKT-CORRUP'
+          playErrorSound()
+          vibrateDevice([200, 100, 200])
+          
+          AuditService.logValidation(
+            ticketCode,
+            authStore.operatorName,
+            false,
+            {
+              message: 'Código QR corrupto',
+              fraudDetected: false,
+              validationType: 'qr'
+            }
+          )
+          
+          showResult(
+            '❌ Código Corrupto',
+            'No se pudo leer el código QR correctamente. Intente nuevamente o use ingreso manual.',
+            false
+          )
+          break
+          
+        case 'fraud':
+          ticketCode = 'TKT-FAKE1-XXXX' // Código falsificado
+          playErrorSound()
+          vibrateDevice([200, 100, 200, 100, 200]) // Vibración más intensa
+          
+          AuditService.logValidation(
+            ticketCode,
+            authStore.operatorName,
+            false,
+            {
+              message: 'Intento de fraude detectado - Código falsificado',
+              fraudDetected: true,
+              validationType: 'qr'
+            }
+          )
+          
+          showResult(
+            '🚨 ALERTA DE FRAUDE',
+            'Se detectó un código QR falsificado. Checksum inválido. Contacte a seguridad.',
+            false
+          )
+          break
+      }
+    }
 
     const startScanning = async () => {
       try {
-        stream.value = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }
-        })
+        console.log('📱 Iniciando escaneo QR...')
+        isScanning.value = true
+        scanAttempts.value = 0
+        qrDetected.value = false
+        remainingTime.value = 15
         
-        if (videoElement.value) {
-          videoElement.value.srcObject = stream.value
-          isScanning.value = true
-
-          // Simular detección de QR después de 3 segundos
-          // En producción, aquí iría una librería de detección de QR
-          setTimeout(() => {
-            // Obtener un ticket aleatorio del localStorage para simular escaneo
-            const tickets = JSON.parse(localStorage.getItem('purchasedTickets') || '[]')
-            if (tickets.length > 0) {
-              const randomTicket = tickets[Math.floor(Math.random() * tickets.length)]
-              validateTicket(randomTicket.codigo)
-            } else {
-              showValidationResult(false, 'No hay tickets', 'No hay tickets registrados en el sistema')
-            }
-            stopScanning()
-          }, 3000)
+        // Simular acceso a la cámara
+        try {
+          stream.value = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'environment' } 
+          })
+          if (videoElement.value) {
+            videoElement.value.srcObject = stream.value
+          }
+          console.log('📷 Cámara activada')
+        } catch (cameraErr) {
+          console.log('⚠️ No se pudo acceder a la cámara, continuando con simulación')
         }
-      } catch (err) {
-        alert('No se pudo acceder a la cámara. Por favor, use validación manual.')
-        console.error(err)
+        
+        // Countdown timer
+        const countdownInterval = setInterval(updateRemainingTime, 1000)
+        
+        // QR detection simulation
+        const detectionInterval = setInterval(startQRDetection, 1500)
+        
+        scanTimeout.value = setTimeout(() => {
+          clearInterval(countdownInterval)
+          clearInterval(detectionInterval)
+          if (isScanning.value && !qrDetected.value) {
+            stopScanning()
+            showResult('⏰ Tiempo Agotado', 'Tiempo de escaneo agotado. Intente nuevamente.', false)
+          }
+        }, maxScanTime)
+        
+      } catch (error) {
+        console.error('❌ Error al iniciar escaneo:', error)
+        stopScanning()
+        showResult('❌ Error', 'Error al acceder a la cámara. Use ingreso manual.', false)
       }
     }
 
     const stopScanning = () => {
+      console.log('⏹ Deteniendo escaneo...')
+      isScanning.value = false
+      scanAttempts.value = 0
+      qrDetected.value = false
+      remainingTime.value = 15
+      
+      if (scanTimeout.value) {
+        clearTimeout(scanTimeout.value)
+        scanTimeout.value = null
+      }
+      
       if (stream.value) {
         stream.value.getTracks().forEach(track => track.stop())
         stream.value = null
       }
-      isScanning.value = false
+      
+      if (videoElement.value) {
+        videoElement.value.srcObject = null
+      }
     }
 
     const validateManual = () => {
-      const input = manualInput.value.trim()
-      if (!input) {
-        alert('Por favor, ingrese un RUT o código de ticket')
+      const code = manualInput.value.trim()
+      
+      if (!code) {
+        showResult('❌ Código Requerido', 'Por favor ingrese un código de ticket.', false)
         return
       }
-
-      validateTicket(input)
+      
+      console.log(`🔍 Validando código manual: ${code}`)
+      
+      // Validar con el sistema de seguridad mejorado
+      const validationResult = ticketStore.validateTicket(code, authStore.operatorName)
+      
+      // Registrar en auditoría
+      AuditService.logValidation(
+        code,
+        authStore.operatorName,
+        validationResult.valid,
+        {
+          message: validationResult.message,
+          ticketInfo: validationResult.ticket,
+          fraudDetected: validationResult.fraudDetected || false,
+          validationType: 'manual'
+        }
+      )
+      
+      // Mostrar resultado apropiado
+      if (!validationResult.valid) {
+        // Reproducir sonido de error (si está disponible)
+        playErrorSound()
+        
+        // Vibrar si el dispositivo lo soporta
+        vibrateDevice([200, 100, 200])
+        
+        showResult(
+          validationResult.fraudDetected ? '🚨 ALERTA DE FRAUDE' : '❌ Ticket Inválido',
+          validationResult.message,
+          false,
+          validationResult.ticket
+        )
+        return
+      }
+      
+      // Marcar ticket como usado
+      ticketStore.markTicketAsUsed(validationResult.ticket.codigo)
       manualInput.value = ''
+      
+      // Reproducir sonido de éxito
+      playSuccessSound()
+      
+      // Vibrar una vez
+      vibrateDevice([100])
+      
+      showResult(
+        '✅ Ticket Válido',
+        validationResult.message,
+        true,
+        validationResult.ticket
+      )
     }
 
-    const validateTicket = (identifier) => {
-      const result = ticketStore.validateTicket(identifier)
-
-      if (!result.valid) {
-        showValidationResult(false, 'Acceso Denegado', result.message, result.ticket)
-      } else {
-        // Marcar ticket como usado
-        ticketStore.markTicketAsUsed(result.ticket.codigo)
-        showValidationResult(
-          true,
-          'Acceso Autorizado',
-          'El ticket es válido. Bienvenido al evento.',
-          result.ticket
-        )
+    // Funciones de feedback
+    const playSuccessSound = () => {
+      try {
+        const audio = new Audio('data:audio/wav;base64,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')
+        audio.play()
+      } catch (error) {
+        console.log('🔇 Audio no disponible')
       }
     }
 
-    const showValidationResult = (success, title, message, ticket = null) => {
+    const playErrorSound = () => {
+      try {
+        const audio = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU')
+        audio.play()
+      } catch (error) {
+        console.log('🔇 Audio no disponible')
+      }
+    }
+
+    const vibrateDevice = (pattern) => {
+      if ('vibrate' in navigator) {
+        navigator.vibrate(pattern)
+      }
+    }
+
+    const showResult = (title, message, success, ticket = null) => {
       validationResult.value = {
-        success,
         title,
         message,
+        success,
         ticket
       }
       showModal.value = true
+      
+      console.log(`📋 Resultado: ${title} - ${message}`)
     }
 
     const closeModal = () => {
       showModal.value = false
+      validationResult.value = {
+        success: false,
+        title: '',
+        message: '',
+        ticket: null
+      }
     }
 
-    const closeModalOnBackdrop = (e) => {
-      if (e.target.classList.contains('result-modal')) {
+    const closeModalOnBackdrop = (event) => {
+      if (event.target === event.currentTarget) {
         closeModal()
       }
     }
 
-    const handleLogout = () => {
-      if (confirm('¿Está seguro que desea cerrar sesión?')) {
+    const handleLogout = async () => {
+      console.log('🚪 Cerrando sesión...')
+      
+      // Detener cualquier escaneo activo
+      if (isScanning.value) {
         stopScanning()
-        authStore.logout()
-        router.push('/operator/login')
       }
+      
+      // Cerrar sesión en el store
+      authStore.logout()
+      
+      // Esperar un momento para que el store se actualice
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Redirigir al login usando replace para evitar volver atrás
+      router.replace('/operator/login')
     }
 
     onUnmounted(() => {
@@ -245,6 +648,8 @@ export default {
     })
 
     return {
+      authStore,
+      tickets,
       videoElement,
       isScanning,
       manualInput,
@@ -253,12 +658,17 @@ export default {
       operatorName,
       selectedEvent,
       stats,
+      scanAttempts,
+      qrDetected,
+      remainingTime,
+      scanStatusMessage,
       startScanning,
       stopScanning,
       validateManual,
       closeModal,
       closeModalOnBackdrop,
-      handleLogout
+      handleLogout,
+      logout: handleLogout
     }
   }
 }
@@ -274,179 +684,241 @@ export default {
 .container {
   max-width: 800px;
   margin: 0 auto;
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
 }
 
-.header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 30px;
-  text-align: center;
-  position: relative;
+.operator-header {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  padding: 25px;
+  margin-bottom: 25px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
-.header h1 {
-  font-size: 28px;
-  margin-bottom: 5px;
-}
-
-.header p {
-  opacity: 0.9;
-  font-size: 14px;
-}
-
-.btn-logout {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 2px solid white;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.3s;
-}
-
-.btn-logout:hover {
-  background: white;
-  color: #667eea;
-}
-
-.content {
-  padding: 30px;
-}
-
-.status-bar {
+.header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 12px;
-  margin-bottom: 25px;
-  gap: 10px;
+}
+
+.operator-info h1 {
+  color: #333;
+  margin: 0 0 10px 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.operator-name {
+  color: #667eea;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 5px 0;
+}
+
+.event-info {
+  color: #6c757d;
+  font-size: 14px;
+  margin: 0;
+}
+
+.logout-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+.content {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  padding: 30px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.status-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
 }
 
 .status-item {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
   text-align: center;
-  flex: 1;
 }
 
 .status-label {
   font-size: 12px;
-  color: #6c757d;
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin-bottom: 5px;
+  opacity: 0.9;
+  margin-bottom: 8px;
 }
 
 .status-value {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: bold;
-  color: #667eea;
 }
 
 .scan-section {
-  background: #1a1d2e;
+  background: #f8f9fa;
   border-radius: 12px;
-  padding: 20px;
+  padding: 25px;
   margin-bottom: 25px;
-  position: relative;
-  overflow: hidden;
 }
 
 .scan-title {
-  color: white;
-  font-size: 14px;
-  margin-bottom: 15px;
-  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: #333;
 }
 
 .camera-container {
   position: relative;
   width: 100%;
-  height: 400px;
-  background: #0f111a;
-  border-radius: 8px;
+  height: 300px;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
 }
 
-video {
+.camera-container video {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
 .camera-placeholder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   text-align: center;
-  color: #6c757d;
+  color: white;
 }
 
 .camera-icon {
-  font-size: 64px;
-  margin-bottom: 15px;
-  opacity: 0.5;
+  font-size: 48px;
+  margin-bottom: 10px;
+}
+
+.camera-placeholder p {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.8;
 }
 
 .scan-line {
   position: absolute;
-  width: 100%;
+  top: 50%;
+  left: 0;
+  right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #667eea, transparent);
-  animation: scan 2s ease-in-out infinite;
-  box-shadow: 0 0 10px #667eea;
+  background: #667eea;
+  animation: scan 2s linear infinite;
 }
 
 @keyframes scan {
-  0%, 100% { top: 0; }
-  50% { top: calc(100% - 2px); }
+  0% { transform: translateY(-150px); }
+  100% { transform: translateY(150px); }
 }
 
 .scan-controls {
-  display: flex;
-  gap: 10px;
+  text-align: center;
+}
+
+.scan-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 15px;
+}
+
+.scan-btn:hover {
+  background: #5a67d8;
+  transform: translateY(-1px);
+}
+
+.scan-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.scan-btn.active {
+  background: #28a745;
+}
+
+.scan-info {
   margin-top: 15px;
 }
 
-.btn {
-  flex: 1;
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
+.scan-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #667eea;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  margin-bottom: 10px;
 }
 
-.btn-primary {
+.scan-progress {
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.progress-info {
+  background: rgba(102, 126, 234, 0.1);
+  padding: 8px 12px;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.pulse {
+  width: 12px;
+  height: 12px;
   background: #667eea;
-  color: white;
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
-.btn-primary:hover {
-  background: #5568d3;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: #5a6268;
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .manual-section {
@@ -463,44 +935,53 @@ video {
 }
 
 .input-group {
-  margin-bottom: 15px;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
-.input-group label {
-  display: block;
-  font-size: 12px;
-  color: #6c757d;
-  margin-bottom: 5px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.input-group input {
-  width: 100%;
+.manual-input {
+  flex: 1;
   padding: 12px 15px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid #ddd;
   border-radius: 8px;
   font-size: 14px;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s ease;
 }
 
-.input-group input:focus {
+.manual-input:focus {
   outline: none;
   border-color: #667eea;
 }
 
-.instructions {
-  background: #fff3cd;
-  border-left: 4px solid #ffc107;
-  padding: 15px;
+.validate-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 12px 20px;
   border-radius: 8px;
-  margin-bottom: 15px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
 }
 
-.instructions h3 {
-  font-size: 14px;
+.validate-btn:hover {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+.instructions {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  padding: 15px;
   color: #856404;
-  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.instructions p {
+  margin: 0 0 10px 0;
 }
 
 .instructions ul {
@@ -583,11 +1064,17 @@ video {
   text-align: left;
 }
 
+.user-info h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+}
+
 .user-info-item {
   display: flex;
   justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid #e9ecef;
 }
 
 .user-info-item:last-child {
@@ -596,10 +1083,100 @@ video {
 
 .user-info-label {
   font-weight: 600;
-  color: #333;
+  color: #495057;
 }
 
 .user-info-value {
   color: #6c757d;
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background: #667eea;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #5a67d8;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .operator-container {
+    padding: 10px;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+  
+  .content {
+    padding: 20px;
+  }
+  
+  .input-group {
+    flex-direction: column;
+  }
+  
+  .status-bar {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Estilos para mensaje de no autenticado */
+.not-authenticated {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.auth-message {
+  background: white;
+  padding: 60px 40px;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+}
+
+.auth-icon {
+  font-size: 80px;
+  margin-bottom: 20px;
+}
+
+.auth-message h2 {
+  color: #333;
+  margin-bottom: 15px;
+  font-size: 28px;
+}
+
+.auth-message p {
+  color: #666;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.redirect-message {
+  color: #667eea;
+  font-weight: 600;
+  margin-top: 20px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 </style>

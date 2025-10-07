@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import QRSecurityService from '../services/qrSecurityService'
 
 export const useTicketStore = defineStore('ticket', {
   state: () => ({
@@ -9,6 +10,7 @@ export const useTicketStore = defineStore('ticket', {
     ticketCode: '',
     processing: false,
     serviceCharge: 5.00,
+    tickets: [], // Array de tickets comprados (cargado desde localStorage)
     personalData: {
       firstName: '',
       lastName: '',
@@ -157,11 +159,21 @@ export const useTicketStore = defineStore('ticket', {
     async processPayment() {
       this.processing = true
       
+      // Verificar disponibilidad antes del pago
+      if (this.selectedTicket.available <= 0) {
+        this.processing = false
+        throw new Error('No hay entradas disponibles para este tipo de ticket')
+      }
+      
       // Simular procesamiento de pago
       await new Promise(resolve => setTimeout(resolve, 2000))
       
-      // Generar código de entrada único
-      this.ticketCode = 'TKT-' + Date.now().toString().slice(-8)
+      // Generar código de entrada único con checksum de seguridad
+      this.ticketCode = QRSecurityService.generateSecureCode()
+      console.log('🔐 Código QR seguro generado:', this.ticketCode)
+      
+      // Reducir la cantidad disponible
+      this.updateAvailableTickets()
       
       // Guardar ticket en localStorage
       this.saveTicketToStorage()
@@ -170,6 +182,38 @@ export const useTicketStore = defineStore('ticket', {
       this.currentStep = 4
       
       return this.ticketCode
+    },
+
+    // Actualizar cantidad disponible después de la compra
+    updateAvailableTickets() {
+      if (this.selectedTicket && this.selectedTicket.available > 0) {
+        this.selectedTicket.available--
+        
+        // También actualizar en el evento padre
+        const event = this.events.find(e => e.id === this.selectedEvent.id)
+        if (event) {
+          const ticket = event.tickets.find(t => t.id === this.selectedTicket.id)
+          if (ticket) {
+            ticket.available--
+          }
+        }
+        
+        // Guardar el estado actualizado en localStorage para persistencia
+        this.saveEventsToStorage()
+      }
+    },
+
+    // Guardar eventos actualizados en localStorage
+    saveEventsToStorage() {
+      localStorage.setItem('eventsData', JSON.stringify(this.events))
+    },
+
+    // Cargar eventos desde localStorage al inicializar
+    loadEventsFromStorage() {
+      const savedEvents = localStorage.getItem('eventsData')
+      if (savedEvents) {
+        this.events = JSON.parse(savedEvents)
+      }
     },
 
     // Guardar ticket comprado en localStorage
@@ -196,32 +240,96 @@ export const useTicketStore = defineStore('ticket', {
       
       tickets.push(newTicket)
       localStorage.setItem('purchasedTickets', JSON.stringify(tickets))
+      
+      // También actualizar el array de tickets en el state
+      this.tickets = tickets
     },
 
-    // Validar un ticket (para el operador)
-    validateTicket(identifier) {
+    // Validar un ticket (para el operador) con seguridad mejorada
+    validateTicket(identifier, operator = 'unknown') {
       const tickets = JSON.parse(localStorage.getItem('purchasedTickets') || '[]')
       
-      // Normalizar identificador (quitar puntos y guiones)
-      const normalizedInput = identifier.replace(/\./g, '').replace(/-/g, '').toUpperCase()
+      // 1. Sanitizar entrada
+      const sanitizedInput = QRSecurityService.sanitizeInput(identifier)
       
-      // Buscar ticket por código o RUT
+      // 2. Validar formato si es un código QR
+      if (sanitizedInput.startsWith('TKT-')) {
+        if (!QRSecurityService.validateFormat(sanitizedInput)) {
+          return { 
+            valid: false, 
+            message: '❌ Formato de código QR inválido',
+            fraudDetected: true
+          }
+        }
+        
+        // 3. Verificar checksum
+        if (!QRSecurityService.verifyChecksum(sanitizedInput)) {
+          return { 
+            valid: false, 
+            message: '🚨 Código QR alterado o falsificado',
+            fraudDetected: true
+          }
+        }
+      }
+      
+      // 4. Verificar duplicados recientes
+      const duplicateCheck = QRSecurityService.checkRecentScans(sanitizedInput)
+      if (duplicateCheck.isDuplicate) {
+        return { 
+          valid: false, 
+          message: `⚠️ Este código fue escaneado hace ${duplicateCheck.timeSinceLastScan}s por ${duplicateCheck.operator}`,
+          fraudDetected: true,
+          ticket: null
+        }
+      }
+      
+      // 5. Buscar ticket
+      const normalizedInput = sanitizedInput.replace(/\./g, '').replace(/-/g, '').toUpperCase()
       const ticket = tickets.find(t => {
         const normalizedCode = t.codigo.replace(/\./g, '').replace(/-/g, '').toUpperCase()
         const normalizedRut = t.rut.replace(/\./g, '').replace(/-/g, '').toUpperCase()
-        
         return normalizedCode === normalizedInput || normalizedRut === normalizedInput
       })
       
       if (!ticket) {
-        return { valid: false, message: 'Ticket no encontrado' }
+        return { 
+          valid: false, 
+          message: '❌ Ticket no encontrado en el sistema',
+          fraudDetected: false
+        }
       }
       
+      // 6. Validar integridad del ticket
+      const integrityCheck = QRSecurityService.validateIntegrity(ticket)
+      if (!integrityCheck.valid) {
+        return {
+          valid: false,
+          message: `🚨 ${integrityCheck.reason}`,
+          fraudDetected: true,
+          ticket
+        }
+      }
+      
+      // 7. Verificar si ya fue usado
       if (ticket.usado) {
-        return { valid: false, message: 'Ticket ya utilizado', ticket }
+        const usedDate = ticket.fechaUso ? new Date(ticket.fechaUso).toLocaleString() : 'Fecha desconocida'
+        return { 
+          valid: false, 
+          message: `⛔ Ticket ya utilizado el ${usedDate}`,
+          ticket,
+          fraudDetected: false
+        }
       }
       
-      return { valid: true, ticket }
+      // 8. Registrar escaneo exitoso
+      QRSecurityService.recordScan(sanitizedInput, operator)
+      
+      return { 
+        valid: true, 
+        message: '✅ Ticket válido - Acceso autorizado',
+        ticket,
+        fraudDetected: false
+      }
     },
 
     // Marcar ticket como usado
@@ -234,6 +342,10 @@ export const useTicketStore = defineStore('ticket', {
         tickets[ticketIndex].usado = true
         tickets[ticketIndex].fechaUso = new Date().toISOString()
         localStorage.setItem('purchasedTickets', JSON.stringify(tickets))
+        
+        // Actualizar el array de tickets en el state
+        this.tickets = tickets
+        
         return true
       }
       
@@ -289,44 +401,17 @@ export const useTicketStore = defineStore('ticket', {
       this.processing = false
     },
 
-    // Funciones agregadas del segundo código
-    updateTicketDetails(details) {
-      this.ticketDetails = { ...this.ticketDetails, ...details }
+    // Inicializar el store (llamar al montar la aplicación)
+    initializeStore() {
+      this.loadEventsFromStorage()
+      this.loadPurchasedTickets()
     },
-
-    async downloadTicketPDF() {
-      // Esta función debe llamarse desde el componente Vue, donde puedes usar jsPDF
-      // Aquí solo se prepara la data
-      return {
-        event: this.selectedEvent,
-        ticket: this.selectedTicket,
-        personalData: this.personalData,
-        ticketCode: this.ticketCode,
-        ticketDetails: this.ticketDetails
-      }
-    },
-
-    async sendTicketByEmail(email) {
-      // Simulación: en producción, llamarías a un endpoint backend
-      // Aquí solo retorna los datos que se enviarían
-      const to = email || this.personalData.email
-      if (!to) throw new Error('No se ha proporcionado un correo electrónico válido.')
-
-      // Aquí deberías hacer una petición HTTP a tu backend para enviar el correo
-      // Por ejemplo:
-      // await fetch('/api/send-ticket', { method: 'POST', body: JSON.stringify({ ... }) })
-
-      return {
-        to,
-        subject: `Tu ticket para ${this.selectedEvent?.name}`,
-        body: {
-          event: this.selectedEvent,
-          ticket: this.selectedTicket,
-          personalData: this.personalData,
-          ticketCode: this.ticketCode,
-          ticketDetails: this.ticketDetails
-        }
-      }
+    
+    // Cargar tickets comprados desde localStorage
+    loadPurchasedTickets() {
+      const purchasedTickets = JSON.parse(localStorage.getItem('purchasedTickets') || '[]')
+      this.tickets = purchasedTickets
+      console.log('📋 Tickets cargados desde localStorage:', this.tickets.length)
     }
   }
 })

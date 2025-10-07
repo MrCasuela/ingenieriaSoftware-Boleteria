@@ -1,7 +1,9 @@
-﻿<template>
-  <div class="container mt-5">
-    <div class="row">
-      <div class="col-md-8">
+<template>
+  <div>
+    <HomeButton position="top-right" />
+    <div class="container mt-5">
+      <div class="row">
+        <div class="col-md-8">
         <h2 class="mb-4">Datos Personales</h2>
         <form @submit.prevent="processPayment">
           <div class="row">
@@ -102,6 +104,7 @@
       </div>
     </div>
   </div>
+  </div>
 </template>
 
 <script>
@@ -110,9 +113,13 @@ import { useTicketStore } from '../stores/ticketStore.js'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useFormFormatting } from '../composables/useFormFormatting.js'
+import HomeButton from '../components/HomeButton.vue'
 
 export default {
   name: 'PersonalData',
+  components: {
+    HomeButton
+  },
   setup() {
     const store = useTicketStore()
     const router = useRouter()
@@ -238,3 +245,7 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+/* Estilos específicos de PersonalData si son necesarios */
+</style>

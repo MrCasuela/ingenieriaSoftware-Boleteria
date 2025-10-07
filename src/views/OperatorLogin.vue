@@ -1,5 +1,6 @@
 <template>
   <div class="login-container">
+    <HomeButton position="top-center" />
     <div class="login-card">
       <div class="login-header">
         <div class="icon">🔐</div>
@@ -62,9 +63,13 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
+import HomeButton from '../components/HomeButton.vue'
 
 export default {
   name: 'OperatorLogin',
+  components: {
+    HomeButton
+  },
   setup() {
     const router = useRouter()
     const authStore = useAuthStore()

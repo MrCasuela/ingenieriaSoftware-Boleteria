@@ -5,6 +5,15 @@ import multer from 'multer';
 import { connectDB } from './src/config/database.js';
 import { sendTicketEmail } from './src/services/emailService.js';
 
+// Importar modelos para inicializar asociaciones
+import './src/models/index.js';
+
+// Importar rutas
+import userRoutes from './src/routes/userRoutes.js';
+import eventRoutes from './src/routes/eventRoutes.js';
+import ticketTypeRoutes from './src/routes/ticketTypeRoutes.js';
+import ticketRoutes from './src/routes/ticketRoutes.js';
+
 // Cargar variables de entorno
 dotenv.config();
 
@@ -52,12 +61,11 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Rutas de la API (TODO: Implementar rutas)
-// app.use('/api/auth', authRoutes);
-// app.use('/api/events', eventRoutes);
-// app.use('/api/tickets', ticketRoutes);
-// app.use('/api/operators', operatorRoutes);
-// app.use('/api/admin', adminRoutes);
+// Rutas de la API
+app.use('/api/users', userRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/ticket-types', ticketTypeRoutes);
+app.use('/api/tickets', ticketRoutes);
 
 // Ruta para enviar entrada por email
 app.post('/api/send-ticket-email', upload.single('pdf'), async (req, res) => {

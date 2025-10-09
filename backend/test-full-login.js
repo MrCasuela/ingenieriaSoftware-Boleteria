@@ -37,7 +37,11 @@ async function testLogin() {
     // Verificar contraseña
     console.log('\n2. Verificando contraseña...');
     const isValidPassword = await bcrypt.compare(password, user.password);
-    console.log('✅ Contraseña válida:', isValidPassword);
+    if (isValidPassword) {
+      console.log('✅ Contraseña verificada correctamente.');
+    } else {
+      console.log('❌ Contraseña incorrecta.');
+    }
     
     // Verificar estado activo
     console.log('\n3. Verificando estado...');

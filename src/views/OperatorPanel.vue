@@ -198,7 +198,7 @@ export default {
       }
     }
     
-    console.log('✅ Operador autenticado:', authStore.operatorName)
+    console.log('✅ Usuario autenticado:', authStore.userName)
     console.log('📊 Tickets disponibles:', ticketStore.tickets?.length || 0)
 
     const videoElement = ref(null)
@@ -218,7 +218,7 @@ export default {
     const qrDetected = ref(false)
     const remainingTime = ref(15)
 
-    const operatorName = computed(() => authStore.operatorName)
+    const operatorName = computed(() => authStore.userName)
     const selectedEvent = computed(() => 'Control de Eventos')
     const stats = computed(() => ticketStore.getTicketStats())
     const tickets = computed(() => ticketStore.tickets)
@@ -310,7 +310,7 @@ export default {
           const validTicket = ticketStore.tickets.find(t => !t.usado)
           if (validTicket) {
             ticketCode = validTicket.codigo
-            validationResult = ticketStore.validateTicket(ticketCode, authStore.operatorName)
+            validationResult = ticketStore.validateTicket(ticketCode, authStore.userName)
             
             if (validationResult.valid) {
               ticketStore.markTicketAsUsed(ticketCode)
@@ -324,7 +324,7 @@ export default {
             // Registrar en auditoría
             AuditService.logValidation(
               ticketCode,
-              authStore.operatorName,
+              authStore.userName,
               validationResult.valid,
               {
                 message: validationResult.message,
@@ -355,7 +355,7 @@ export default {
             
             AuditService.logValidation(
               ticketCode,
-              authStore.operatorName,
+              authStore.userName,
               false,
               {
                 message: 'Ticket ya utilizado',
@@ -382,7 +382,7 @@ export default {
           
           AuditService.logValidation(
             ticketCode,
-            authStore.operatorName,
+            authStore.userName,
             false,
             {
               message: 'Código QR inválido',
@@ -405,7 +405,7 @@ export default {
           
           AuditService.logValidation(
             ticketCode,
-            authStore.operatorName,
+            authStore.userName,
             false,
             {
               message: 'Código QR corrupto',
@@ -428,7 +428,7 @@ export default {
           
           AuditService.logValidation(
             ticketCode,
-            authStore.operatorName,
+            authStore.userName,
             false,
             {
               message: 'Intento de fraude detectado - Código falsificado',
@@ -522,12 +522,12 @@ export default {
       console.log(`🔍 Validando código manual: ${code}`)
       
       // Validar con el sistema de seguridad mejorado
-      const validationResult = ticketStore.validateTicket(code, authStore.operatorName)
+      const validationResult = ticketStore.validateTicket(code, authStore.userName)
       
       // Registrar en auditoría
       AuditService.logValidation(
         code,
-        authStore.operatorName,
+        authStore.userName,
         validationResult.valid,
         {
           message: validationResult.message,

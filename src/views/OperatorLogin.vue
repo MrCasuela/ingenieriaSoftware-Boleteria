@@ -4,7 +4,7 @@
       <div class="login-header">
         <div class="icon">🔐</div>
         <h1>Control de Acceso</h1>
-        <p>Ingreso para Operadores</p>
+        <p>Ingreso al Sistema</p>
       </div>
 
       <form @submit.prevent="handleLogin" class="login-form">
@@ -15,10 +15,10 @@
         <div class="form-group">
           <label for="username">Usuario</label>
           <input
-            type="text"
+            type="email"
             id="username"
             v-model="username"
-            placeholder="Ingrese su usuario"
+            placeholder="Ingrese su email"
             required
             autocomplete="username"
           />
@@ -44,10 +44,20 @@
 
       <div class="login-info">
         <h3>Información de Acceso:</h3>
-        <ul>
-          <li><strong>Usuario:</strong> operador1 | <strong>Contraseña:</strong> admin123</li>
-          <li><strong>Usuario:</strong> operador2 | <strong>Contraseña:</strong> admin456</li>
-        </ul>
+        <div class="credentials-section">
+          <h4>👨‍💼 Administradores:</h4>
+          <ul>
+            <li><strong>Email:</strong> admin1@ticketvue.com | <strong>Contraseña:</strong> admin123</li>
+            <li><strong>Email:</strong> admin2@ticketvue.com | <strong>Contraseña:</strong> admin456</li>
+          </ul>
+        </div>
+        <div class="credentials-section">
+          <h4>👤 Operadores:</h4>
+          <ul>
+            <li><strong>Email:</strong> operador1@ticketvue.com | <strong>Contraseña:</strong> oper123</li>
+            <li><strong>Email:</strong> operador2@ticketvue.com | <strong>Contraseña:</strong> oper456</li>
+          </ul>
+        </div>
         <p class="note">Esta información es solo para desarrollo</p>
       </div>
 
@@ -78,15 +88,27 @@ export default {
       errorMessage.value = ''
       loading.value = true
 
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 500))
+      try {
+        // Intentar login con el backend (automáticamente detecta el tipo de usuario)
+        const result = await authStore.loginWithAPI(username.value, password.value)
 
-      const success = authStore.login(username.value, password.value)
-
-      if (success) {
-        router.push('/operator/panel')
-      } else {
-        errorMessage.value = 'Usuario o contraseña incorrectos'
+        if (result.success) {
+          // Redirigir según el tipo de usuario retornado
+          if (result.userType === 'Administrador') {
+            router.push('/admin/panel')
+          } else if (result.userType === 'Operador') {
+            router.push('/operator/panel')
+          } else {
+            errorMessage.value = 'Tipo de usuario no autorizado para esta sección'
+            loading.value = false
+          }
+        } else {
+          errorMessage.value = result.message || 'Usuario o contraseña incorrectos'
+          loading.value = false
+        }
+      } catch (error) {
+        console.error('Error en login:', error)
+        errorMessage.value = 'Error al conectar con el servidor. Intente nuevamente.'
         loading.value = false
       }
     }
@@ -169,7 +191,8 @@ export default {
   margin-bottom: 8px;
 }
 
-.form-group input {
+.form-group input,
+.form-group select {
   width: 100%;
   padding: 12px 15px;
   border: 2px solid #e0e0e0;
@@ -178,7 +201,8 @@ export default {
   transition: border-color 0.3s;
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group select:focus {
   outline: none;
   border-color: #667eea;
 }
@@ -215,15 +239,27 @@ export default {
 }
 
 .login-info h3 {
+  font-size: 16px;
+  color: #856404;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.credentials-section {
+  margin-bottom: 15px;
+}
+
+.credentials-section h4 {
   font-size: 14px;
   color: #856404;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  font-weight: 600;
 }
 
 .login-info ul {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 0 0 10px 0;
 }
 
 .login-info li {

@@ -15,7 +15,7 @@ class PaymentService {
     '6011111111111117', // Discover
     '4532015112830366', // Visa
     '5425233430109903', // Mastercard
-    // Agregamos el que el usuario está usando
+    // Agregamos la que el usuario está usando
     '5555555555555555'  // Mastercard (prueba)
   ]
 

@@ -35,9 +35,10 @@ export default {
     const router = useRouter()
     const { events } = storeToRefs(store)
 
-    // Resetear el store cuando se vuelve a la página principal
-    onMounted(() => {
+    // Cargar eventos desde la API al montar el componente
+    onMounted(async () => {
       store.resetStore()
+      await store.loadEventsFromAPI()
     })
 
     const selectEvent = (event) => {

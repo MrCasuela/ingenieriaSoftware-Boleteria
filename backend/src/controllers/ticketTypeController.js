@@ -1,5 +1,6 @@
 import TicketType from '../models/TicketType.js';
 import Event from '../models/Event.js';
+import logger from '../utils/logger.js';
 
 /**
  * Obtener todos los tipos de tickets
@@ -10,9 +11,23 @@ export const getAllTicketTypes = async (req, res) => {
       order: [['created_at', 'DESC']]
     });
     
+    // Mapear campos del modelo al formato de API
+    const mappedTicketTypes = ticketTypes.map(tt => ({
+      id: tt.id,
+      event_id: tt.eventId,
+      name: tt.name,
+      description: tt.description,
+      price: tt.price,
+      total_capacity: tt.quantity,
+      available_capacity: tt.available,
+      sold_tickets: tt.quantity - tt.available,
+      created_at: tt.createdAt,
+      updated_at: tt.updatedAt
+    }));
+    
     res.json({
       success: true,
-      data: ticketTypes
+      data: mappedTicketTypes
     });
   } catch (error) {
     console.error('Error al obtener tipos de tickets:', error);
@@ -32,13 +47,27 @@ export const getTicketTypesByEvent = async (req, res) => {
     const { eventId } = req.params;
     
     const ticketTypes = await TicketType.findAll({
-      where: { event_id: eventId },
+      where: { eventId: eventId },
       order: [['price', 'ASC']]
     });
     
+    // Mapear campos del modelo al formato de API
+    const mappedTicketTypes = ticketTypes.map(tt => ({
+      id: tt.id,
+      event_id: tt.eventId,
+      name: tt.name,
+      description: tt.description,
+      price: tt.price,
+      total_capacity: tt.quantity,
+      available_capacity: tt.available,
+      sold_tickets: tt.quantity - tt.available,
+      created_at: tt.createdAt,
+      updated_at: tt.updatedAt
+    }));
+    
     res.json({
       success: true,
-      data: ticketTypes
+      data: mappedTicketTypes
     });
   } catch (error) {
     console.error('Error al obtener tipos de tickets:', error);
@@ -70,9 +99,23 @@ export const getTicketTypeById = async (req, res) => {
       });
     }
     
+    // Mapear campos del modelo al formato de API
+    const mappedTicketType = {
+      id: ticketType.id,
+      event_id: ticketType.eventId,
+      name: ticketType.name,
+      description: ticketType.description,
+      price: ticketType.price,
+      total_capacity: ticketType.quantity,
+      available_capacity: ticketType.available,
+      sold_tickets: ticketType.quantity - ticketType.available,
+      created_at: ticketType.createdAt,
+      updated_at: ticketType.updatedAt
+    };
+    
     res.json({
       success: true,
-      data: ticketType
+      data: mappedTicketType
     });
   } catch (error) {
     console.error('Error al obtener tipo de ticket:', error);
@@ -89,39 +132,85 @@ export const getTicketTypeById = async (req, res) => {
  */
 export const createTicketType = async (req, res) => {
   try {
-    const ticketTypeData = req.body;
+    logger.info('TICKET_TYPES', 'Iniciando creación de tipo de ticket');
+    logger.debug('TICKET_TYPES', 'Datos recibidos en req.body', req.body);
+    
+    const { event_id, name, description, price, total_capacity } = req.body;
     
     // Validar datos requeridos
-    if (!ticketTypeData.event_id || !ticketTypeData.name || !ticketTypeData.price || !ticketTypeData.total_capacity) {
+    if (!event_id || !name || !price || !total_capacity) {
+      logger.warn('TICKET_TYPES', 'Faltan datos requeridos', { 
+        event_id, 
+        name, 
+        price, 
+        total_capacity 
+      });
+      
       return res.status(400).json({
         success: false,
         message: 'Faltan datos requeridos (event_id, name, price, total_capacity)'
       });
     }
     
+    logger.debug('TICKET_TYPES', `Buscando evento con ID: ${event_id} (tipo: ${typeof event_id})`);
+    
     // Verificar que el evento existe
-    const event = await Event.findByPk(ticketTypeData.event_id);
+    const event = await Event.findByPk(event_id);
+    
     if (!event) {
+      logger.error('TICKET_TYPES', `Evento no encontrado con ID: ${event_id}`, {
+        event_id,
+        tipo: typeof event_id
+      });
+      
       return res.status(404).json({
         success: false,
         message: 'Evento no encontrado'
       });
     }
     
-    // Establecer available_capacity igual a total_capacity si no se proporciona
-    if (!ticketTypeData.available_capacity) {
-      ticketTypeData.available_capacity = ticketTypeData.total_capacity;
-    }
+    logger.success('TICKET_TYPES', `Evento encontrado: ${event.name} (ID: ${event.id})`);
+    
+    // Mapear campos del API a los campos del modelo
+    const ticketTypeData = {
+      eventId: event_id,
+      name: name,
+      description: description || '',
+      price: parseFloat(price),
+      quantity: parseInt(total_capacity),
+      available: parseInt(total_capacity) // Inicialmente todas están disponibles
+    };
+    
+    logger.debug('TICKET_TYPES', 'Creando tipo de ticket con datos', ticketTypeData);
     
     const ticketType = await TicketType.create(ticketTypeData);
+    
+    logger.success('TICKET_TYPES', `Tipo de ticket creado exitosamente: ${ticketType.name} (ID: ${ticketType.id})`);
+    
+    // Mapear campos del modelo de vuelta al formato de API
+    const responseData = {
+      id: ticketType.id,
+      event_id: ticketType.eventId,
+      name: ticketType.name,
+      description: ticketType.description,
+      price: ticketType.price,
+      total_capacity: ticketType.quantity,
+      available_capacity: ticketType.available,
+      sold_tickets: ticketType.quantity - ticketType.available,
+      created_at: ticketType.createdAt,
+      updated_at: ticketType.updatedAt
+    };
+    
+    logger.debug('TICKET_TYPES', 'Respuesta a enviar', responseData);
     
     res.status(201).json({
       success: true,
       message: 'Tipo de ticket creado exitosamente',
-      data: ticketType
+      data: responseData
     });
   } catch (error) {
-    console.error('Error al crear tipo de ticket:', error);
+    logger.error('TICKET_TYPES', 'Error al crear tipo de ticket', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error al crear tipo de ticket',
@@ -136,7 +225,7 @@ export const createTicketType = async (req, res) => {
 export const updateTicketType = async (req, res) => {
   try {
     const { id } = req.params;
-    const ticketTypeData = req.body;
+    const { event_id, name, description, price, total_capacity } = req.body;
     
     const ticketType = await TicketType.findByPk(id);
     
@@ -147,12 +236,36 @@ export const updateTicketType = async (req, res) => {
       });
     }
     
-    await ticketType.update(ticketTypeData);
+    // Mapear campos del API a los campos del modelo
+    const updateData = {};
+    if (event_id !== undefined) updateData.eventId = event_id;
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (price !== undefined) updateData.price = parseFloat(price);
+    if (total_capacity !== undefined) {
+      const currentSold = ticketType.quantity - ticketType.available;
+      updateData.quantity = parseInt(total_capacity);
+      updateData.available = updateData.quantity - currentSold;
+    }
     
+    await ticketType.update(updateData);
+    
+    // Mapear campos del modelo de vuelta al formato de API
     res.json({
       success: true,
       message: 'Tipo de ticket actualizado exitosamente',
-      data: ticketType
+      data: {
+        id: ticketType.id,
+        event_id: ticketType.eventId,
+        name: ticketType.name,
+        description: ticketType.description,
+        price: ticketType.price,
+        total_capacity: ticketType.quantity,
+        available_capacity: ticketType.available,
+        sold_tickets: ticketType.quantity - ticketType.available,
+        created_at: ticketType.createdAt,
+        updated_at: ticketType.updatedAt
+      }
     });
   } catch (error) {
     console.error('Error al actualizar tipo de ticket:', error);

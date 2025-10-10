@@ -175,6 +175,7 @@ export const useTicketStore = defineStore('ticket', {
         
         if (data.success && data.data) {
           // Mapear eventos de la BD al formato del frontend
+<<<<<<< Updated upstream
           this.events = await Promise.all(data.data.map(async (event) => {
             // Cargar los tipos de tickets para cada evento
             const ticketTypes = await this.loadTicketTypesForEvent(event.id)
@@ -191,6 +192,20 @@ export const useTicketStore = defineStore('ticket', {
               minPrice: ticketTypes.length > 0 ? Math.min(...ticketTypes.map(t => t.price)) : 0,
               tickets: ticketTypes
             }
+=======
+          this.events = data.data.map(event => ({
+            id: event.id,
+            name: event.name,
+            description: event.description,
+            date: new Date(event.date).toLocaleDateString('es-CL'),
+            time: new Date(event.date).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+            location: event.location || event.venue?.name || '',
+            image: event.image || `https://picsum.photos/seed/event${event.id}/400/300`,
+            category: event.category || 'otro',
+            minPrice: 0, // Se actualizará cuando se carguen los tipos de tickets
+            // Aquí deberías cargar los tipos de tickets desde la API también
+            tickets: [] // Por ahora vacío, se puede implementar después
+>>>>>>> Stashed changes
           }))
           
           console.log('✅ Eventos cargados desde API:', this.events.length)
@@ -205,6 +220,7 @@ export const useTicketStore = defineStore('ticket', {
         this.events = []
         return false
       }
+<<<<<<< Updated upstream
     },
 
     // Cargar tipos de tickets para un evento específico
@@ -328,6 +344,8 @@ export const useTicketStore = defineStore('ticket', {
         // No lanzar error para no bloquear el flujo
         // El ticket se guardó en localStorage como respaldo
       }
+=======
+>>>>>>> Stashed changes
     },
 
     // Guardar ticket comprado en localStorage

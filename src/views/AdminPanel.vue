@@ -757,6 +757,28 @@ export default {
             throw new Error('La respuesta del servidor no tiene el formato esperado')
           }
         }
+<<<<<<< Updated upstream
+=======
+      } else {
+        // Crear nuevo tipo de ticket
+        const newTicketType = {
+          ...ticketTypeForm.value,
+          id: Date.now(),
+          sold: 0
+        }
+        ticketTypes.value.push(newTicketType)
+      }
+      
+      // Actualizar precio mínimo del evento
+      updateEventMinPrice(ticketTypeForm.value.eventId)
+      closeTicketTypeForm()
+    }
+
+    const deleteTicketType = (ticketTypeId) => {
+      if (confirm('¿Estás seguro de eliminar este tipo de ticket?')) {
+        const ticketType = ticketTypes.value.find(tt => tt.id === ticketTypeId)
+        ticketTypes.value = ticketTypes.value.filter(tt => tt.id !== ticketTypeId)
+>>>>>>> Stashed changes
         
         // Actualizar precio mínimo del evento
         updateEventMinPrice(ticketTypeForm.value.eventId)

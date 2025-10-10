@@ -28,7 +28,6 @@ async function testLogin() {
       const admin = adminResults[0];
       console.log('Email:', admin.email);
       console.log('User Type:', admin.user_type);
-      console.log('Password Hash:', admin.password.substring(0, 30) + '...');
       
       const isValid = await bcrypt.compare('admin123', admin.password);
       console.log('Password "admin123" is valid:', isValid);
@@ -45,7 +44,6 @@ async function testLogin() {
       const oper = operResults[0];
       console.log('Email:', oper.email);
       console.log('User Type:', oper.user_type);
-      console.log('Password Hash:', oper.password.substring(0, 30) + '...');
       
       const isValid = await bcrypt.compare('oper123', oper.password);
       console.log('Password "oper123" is valid:', isValid);

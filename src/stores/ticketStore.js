@@ -28,83 +28,9 @@ export const useTicketStore = defineStore('ticket', {
       gate: '', // Puerta asignada
       seat: ''  // Puedes agregar más campos si lo necesitas
     },
-    events: [
-      {
-        id: 1,
-        name: 'Concierto Rock en Vivo',
-        description: 'Una noche increíble con las mejores bandas de rock nacional e internacional.',
-        date: '15 de Noviembre, 2025',
-        location: 'Estadio Nacional',
-        image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=200&fit=crop',
-        minPrice: 50,
-        tickets: [
-          {
-            id: 1,
-            name: 'Entrada General',
-            description: 'Acceso a la zona general del estadio',
-            price: 50,
-            available: 500
-          },
-          {
-            id: 2,
-            name: 'Entrada VIP',
-            description: 'Acceso preferencial con bebida incluida',
-            price: 120,
-            available: 100
-          }
-        ]
-      },
-      {
-        id: 2,
-        name: 'Festival de Comida Gourmet',
-        description: 'Disfruta de los mejores platos de chefs reconocidos internacionalmente.',
-        date: '22 de Noviembre, 2025',
-        location: 'Centro de Convenciones',
-        image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=200&fit=crop',
-        minPrice: 30,
-        tickets: [
-          {
-            id: 3,
-            name: 'Entrada Básica',
-            description: 'Acceso al festival sin degustaciones',
-            price: 30,
-            available: 300
-          },
-          {
-            id: 4,
-            name: 'Entrada Premium',
-            description: 'Acceso completo con degustaciones incluidas',
-            price: 75,
-            available: 150
-          }
-        ]
-      },
-      {
-        id: 3,
-        name: 'Conferencia de Tecnología',
-        description: 'Los líderes tecnológicos más importantes compartirán sus conocimientos.',
-        date: '5 de Diciembre, 2025',
-        location: 'Auditorio Universitario',
-        image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=200&fit=crop',
-        minPrice: 25,
-        tickets: [
-          {
-            id: 5,
-            name: 'Entrada Estudiante',
-            description: 'Acceso con descuento para estudiantes',
-            price: 25,
-            available: 200
-          },
-          {
-            id: 6,
-            name: 'Entrada Profesional',
-            description: 'Acceso completo con material adicional',
-            price: 60,
-            available: 100
-          }
-        ]
-      }
-    ]
+    // EVENTOS MOVIDOS A MySQL - Ya no hardcodeados aquí
+    // Los eventos ahora se cargan dinámicamente desde la API
+    events: []
   }),
 
   getters: {
@@ -203,17 +129,19 @@ export const useTicketStore = defineStore('ticket', {
       }
     },
 
-    // Guardar eventos actualizados en localStorage
+    // DEPRECATED: Ya no guardamos eventos en localStorage
+    // Los eventos se gestionan exclusivamente desde MySQL vía API
     saveEventsToStorage() {
-      localStorage.setItem('eventsData', JSON.stringify(this.events))
+      // No hacer nada - los eventos se guardan en MySQL
+      console.log('⚠️ saveEventsToStorage() está deprecado - eventos en MySQL')
     },
 
-    // Cargar eventos desde localStorage al inicializar
+    // DEPRECATED: Ya no usamos localStorage para eventos
+    // Los eventos ahora se cargan desde la API en cada vista
     loadEventsFromStorage() {
-      const savedEvents = localStorage.getItem('eventsData')
-      if (savedEvents) {
-        this.events = JSON.parse(savedEvents)
-      }
+      // Ya no cargar desde localStorage
+      // Los eventos se obtienen de la API cuando se necesitan
+      console.log('⚠️ loadEventsFromStorage() está deprecado - usar API en su lugar')
     },
 
     // Guardar ticket comprado en localStorage

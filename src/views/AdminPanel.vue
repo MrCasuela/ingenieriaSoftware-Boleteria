@@ -41,8 +41,28 @@
           </button>
         </div>
 
+        <!-- Loading State -->
+        <div v-if="loading" class="loading-state">
+          <div class="spinner"></div>
+          <p>Cargando eventos...</p>
+        </div>
+
+        <!-- Error State -->
+        <div v-else-if="error" class="error-state">
+          <p>⚠️ {{ error }}</p>
+          <button @click="loadData" class="btn-secondary">🔄 Reintentar</button>
+        </div>
+
+        <!-- Empty State -->
+        <div v-else-if="events.length === 0" class="empty-state">
+          <p>📭 No hay eventos creados aún</p>
+          <button @click="showEventForm = true" class="btn-primary">
+            ➕ Crear Primer Evento
+          </button>
+        </div>
+
         <!-- Lista de Eventos -->
-        <div class="events-grid">
+        <div v-else class="events-grid">
           <div v-for="event in events" :key="event.id" class="event-card">
             <div class="event-image">
               <img :src="event.imageUrl" :alt="event.name" />
@@ -422,6 +442,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
+import * as eventApi from '../services/eventApiService'
+import * as ticketTypeApi from '../services/ticketTypeApiService'
 
 export default {
   name: 'AdminPanel',
@@ -436,6 +458,8 @@ export default {
     const editingEvent = ref(null)
     const editingTicketType = ref(null)
     const selectedEventForTickets = ref('')
+    const loading = ref(false)
+    const error = ref(null)
 
     // Data
     const events = ref([])
@@ -491,76 +515,86 @@ export default {
     })
 
     // Methods
-    const loadData = () => {
-      // Cargar eventos desde localStorage
-      const savedEvents = localStorage.getItem('adminEvents')
-      if (savedEvents) {
-        events.value = JSON.parse(savedEvents)
-      } else {
-        // Datos de ejemplo
-        events.value = [
-          {
-            id: 1,
-            name: 'Concierto Rock en Vivo',
-            category: 'Concierto',
-            description: 'La mejor banda de rock en un espectáculo inolvidable',
-            date: '2025-12-15',
-            time: '20:00',
-            venue: 'Estadio Nacional',
-            city: 'Santiago',
-            totalCapacity: 5000,
-            imageUrl: 'https://picsum.photos/seed/concert1/400/300'
-          }
-        ]
-        saveEvents()
+    const loadData = async () => {
+      loading.value = true
+      error.value = null
+      
+      try {
+        // Cargar eventos desde la API
+        console.log('🔄 Cargando eventos desde la API...')
+        const eventsResponse = await eventApi.getAllEvents()
+        console.log('✅ Respuesta de eventos:', eventsResponse)
+        
+        if (eventsResponse.success && eventsResponse.data) {
+          // Mapear los datos del backend al formato del frontend
+          events.value = eventsResponse.data.map(event => ({
+            id: event.id,
+            name: event.name,
+            category: event.category || 'Otro',
+            description: event.description,
+            date: event.date,
+            time: '',
+            venue: event.location || event.venue?.name || '',
+            city: event.venue?.city || '',
+            totalCapacity: event.venue?.capacity || 0,
+            imageUrl: event.image || 'https://picsum.photos/seed/event' + event.id + '/400/300',
+            minPrice: 0
+          }))
+          console.log('✅ Eventos cargados:', events.value.length)
+        } else {
+          console.warn('⚠️ No se recibieron eventos válidos de la API')
+          events.value = []
+        }
+
+        // Cargar tipos de tickets desde la API
+        console.log('🔄 Cargando tipos de tickets desde la API...')
+        const ticketTypesResponse = await ticketTypeApi.getAllTicketTypes()
+        console.log('✅ Respuesta de ticket types:', ticketTypesResponse)
+        
+        if (ticketTypesResponse.success && ticketTypesResponse.data) {
+          // Mapear los datos del backend al formato del frontend
+          ticketTypes.value = ticketTypesResponse.data.map(tt => ({
+            id: tt.id,
+            eventId: tt.eventId,
+            name: tt.name,
+            description: tt.description,
+            price: parseFloat(tt.price),
+            capacity: tt.quantity,
+            sold: tt.quantity - tt.available, // Calcular vendidos
+            available: tt.available
+          }))
+          console.log('✅ Tipos de tickets cargados:', ticketTypes.value.length)
+          
+          // Calcular precio mínimo por evento
+          events.value.forEach(event => {
+            const eventTickets = ticketTypes.value.filter(tt => tt.eventId === event.id)
+            if (eventTickets.length > 0) {
+              event.minPrice = Math.min(...eventTickets.map(tt => tt.price))
+              // Calcular capacidad total del evento basado en los tickets
+              event.totalCapacity = eventTickets.reduce((sum, tt) => sum + tt.capacity, 0)
+            }
+          })
+        } else {
+          console.warn('⚠️ No se recibieron tipos de tickets válidos de la API')
+          ticketTypes.value = []
+        }
+        
+      } catch (err) {
+        console.error('❌ Error al cargar datos:', err)
+        error.value = 'Error al cargar datos: ' + err.message
+      } finally {
+        loading.value = false
       }
-
-      // Cargar tipos de ticket
-      const savedTicketTypes = localStorage.getItem('adminTicketTypes')
-      if (savedTicketTypes) {
-        ticketTypes.value = JSON.parse(savedTicketTypes)
-      } else {
-        // Datos de ejemplo
-        ticketTypes.value = [
-          {
-            id: 1,
-            eventId: 1,
-            name: 'VIP',
-            description: 'Acceso preferente y meet & greet',
-            price: 50000,
-            capacity: 100,
-            sold: 45
-          },
-          {
-            id: 2,
-            eventId: 1,
-            name: 'Platea',
-            description: 'Asientos numerados',
-            price: 30000,
-            capacity: 500,
-            sold: 320
-          },
-          {
-            id: 3,
-            eventId: 1,
-            name: 'General',
-            description: 'Acceso general de pie',
-            price: 15000,
-            capacity: 4400,
-            sold: 2100
-          }
-        ]
-        saveTicketTypes()
-      }
     }
 
-    const saveEvents = () => {
-      localStorage.setItem('adminEvents', JSON.stringify(events.value))
-    }
+    // DEPRECATED: Ya no se usa localStorage, todo se guarda en BD
+    // const saveEvents = () => {
+    //   localStorage.setItem('adminEvents', JSON.stringify(events.value))
+    // }
 
-    const saveTicketTypes = () => {
-      localStorage.setItem('adminTicketTypes', JSON.stringify(ticketTypes.value))
-    }
+    // const saveTicketTypes = () => {
+    //   localStorage.setItem('adminTicketTypes', JSON.stringify(ticketTypes.value))
+    // }
 
     const formatDate = (dateString) => {
       const date = new Date(dateString)
@@ -644,32 +678,81 @@ export default {
       showEventForm.value = true
     }
 
-    const saveEvent = () => {
-      if (editingEvent.value) {
-        // Actualizar evento existente
-        const index = events.value.findIndex(e => e.id === editingEvent.value)
-        if (index !== -1) {
-          events.value[index] = { ...eventForm.value, id: editingEvent.value }
+    const saveEvent = async () => {
+      try {
+        loading.value = true
+        
+        // Preparar datos para la API
+        const eventData = {
+          name: eventForm.value.name,
+          description: eventForm.value.description,
+          date: eventForm.value.date + (eventForm.value.time ? 'T' + eventForm.value.time : 'T00:00:00'),
+          location: eventForm.value.venue || eventForm.value.city,
+          venue: {
+            name: eventForm.value.venue || '',
+            address: '',
+            capacity: eventForm.value.totalCapacity || 0,
+            city: eventForm.value.city || '',
+            country: 'Chile'
+          },
+          image: eventForm.value.imageUrl || `https://picsum.photos/seed/${eventForm.value.name}/400/300`,
+          category: eventForm.value.category.toLowerCase(),
+          status: 'published'
         }
-      } else {
-        // Crear nuevo evento
-        const newEvent = {
-          ...eventForm.value,
-          id: Date.now(),
-          minPrice: 0 // Se calculará según los tipos de ticket
+
+        if (editingEvent.value) {
+          // Actualizar evento existente
+          console.log('📝 Actualizando evento:', editingEvent.value)
+          const response = await eventApi.updateEvent(editingEvent.value, eventData)
+          
+          if (response.success) {
+            console.log('✅ Evento actualizado exitosamente')
+            alert('✅ Evento actualizado exitosamente')
+            // Recargar datos
+            await loadData()
+          }
+        } else {
+          // Crear nuevo evento
+          console.log('➕ Creando nuevo evento:', eventData)
+          const response = await eventApi.createEvent(eventData)
+          
+          if (response.success) {
+            console.log('✅ Evento creado exitosamente:', response.data)
+            alert('✅ Evento creado exitosamente')
+            // Recargar datos
+            await loadData()
+          }
         }
-        events.value.push(newEvent)
+        
+        closeEventForm()
+      } catch (error) {
+        console.error('❌ Error al guardar evento:', error)
+        alert('❌ Error al guardar evento: ' + error.message)
+      } finally {
+        loading.value = false
       }
-      saveEvents()
-      closeEventForm()
     }
 
-    const deleteEvent = (eventId) => {
+    const deleteEvent = async (eventId) => {
       if (confirm('¿Estás seguro de eliminar este evento? También se eliminarán todos sus tipos de ticket.')) {
-        events.value = events.value.filter(e => e.id !== eventId)
-        ticketTypes.value = ticketTypes.value.filter(tt => tt.eventId !== eventId)
-        saveEvents()
-        saveTicketTypes()
+        try {
+          loading.value = true
+          console.log('🗑️ Eliminando evento:', eventId)
+          
+          const response = await eventApi.deleteEvent(eventId)
+          
+          if (response.success) {
+            console.log('✅ Evento eliminado exitosamente')
+            alert('✅ Evento eliminado exitosamente')
+            // Recargar datos
+            await loadData()
+          }
+        } catch (error) {
+          console.error('❌ Error al eliminar evento:', error)
+          alert('❌ Error al eliminar evento: ' + error.message)
+        } finally {
+          loading.value = false
+        }
       }
     }
 
@@ -708,8 +791,8 @@ export default {
       // Actualizar precio mínimo del evento
       updateEventMinPrice(ticketTypeForm.value.eventId)
       
-      saveTicketTypes()
-      saveEvents()
+      // saveTicketTypes() // DEPRECATED: Ahora se guarda en BD mediante API
+      // saveEvents() // DEPRECATED: Ahora se guarda en BD mediante API
       closeTicketTypeForm()
     }
 
@@ -723,8 +806,8 @@ export default {
           updateEventMinPrice(ticketType.eventId)
         }
         
-        saveTicketTypes()
-        saveEvents()
+        // saveTicketTypes() // DEPRECATED: Ahora se guarda en BD mediante API
+        // saveEvents() // DEPRECATED: Ahora se guarda en BD mediante API
       }
     }
 
@@ -748,6 +831,12 @@ export default {
 
     // Lifecycle
     onMounted(() => {
+      // Limpiar localStorage antiguo para evitar datos inconsistentes
+      console.log('🧹 Limpiando localStorage antiguo...')
+      localStorage.removeItem('adminEvents')
+      localStorage.removeItem('adminTicketTypes')
+      
+      // Cargar datos desde la API
       loadData()
     })
 
@@ -767,6 +856,9 @@ export default {
       filteredTicketTypes,
       totalCapacity,
       totalPotentialRevenue,
+      loading,
+      error,
+      loadData,
       formatDate,
       formatPrice,
       getOccupancyPercentage,
@@ -1414,5 +1506,61 @@ export default {
   .stats-table-container {
     overflow-x: auto;
   }
+}
+
+/* Loading, Error & Empty States */
+.loading-state,
+.error-state,
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 12px;
+  margin: 20px 0;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-state p {
+  font-size: 16px;
+  color: #666;
+  font-weight: 500;
+}
+
+.error-state {
+  color: #e74c3c;
+}
+
+.error-state p {
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+.empty-state {
+  color: #999;
+}
+
+.empty-state p {
+  font-size: 18px;
+  margin-bottom: 20px;
 }
 </style>

@@ -20,7 +20,7 @@ const verifyUsers = async () => {
       console.log(`Email: ${user.email}`);
       console.log(`Nombre: ${user.firstName} ${user.lastName}`);
       console.log(`Tipo: ${user.userType}`);
-      console.log(`Password Hash: ${user.password.substring(0, 30)}...`);
+      // Password hash not logged to avoid exposing sensitive information
       
       // Verificar si la contraseña coincide
       const testPassword = user.userType === 'Operador' 

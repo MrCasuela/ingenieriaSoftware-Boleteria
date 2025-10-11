@@ -133,16 +133,12 @@ export const getTicketByCode = async (req, res) => {
 export const getTicketsByRut = async (req, res) => {
   try {
     const { rut } = req.params;
-    
-    console.log(`🔍 Buscando tickets para RUT: ${rut}`);
-    
     // Buscar usuario por RUT
     const user = await User.findOne({
       where: { rut: rut }
     });
     
     if (!user) {
-      console.log(`❌ No se encontró usuario con RUT: ${rut}`);
       return res.status(404).json({
         success: false,
         message: 'No se encontró usuario con este RUT',
@@ -150,7 +146,6 @@ export const getTicketsByRut = async (req, res) => {
       });
     }
     
-    console.log(`✅ Usuario encontrado: ${user.first_name} ${user.last_name}`);
     
     // Buscar tickets del usuario
     const tickets = await Ticket.findAll({

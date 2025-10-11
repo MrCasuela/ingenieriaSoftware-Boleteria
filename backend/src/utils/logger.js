@@ -128,7 +128,6 @@ class Logger {
     }
     
     const logMessage = this._formatMessage('ERROR', category, message, errorData);
-    console.error(`❌ ${logMessage.trim()}`);
     
     // Siempre escribir en error.log
     this._writeToFile(this.files.error, logMessage);

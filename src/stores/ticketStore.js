@@ -61,7 +61,7 @@ export const useTicketStore = defineStore('ticket', {
 
     selectTicket(ticket) {
       this.selectedTicket = ticket
-      this.ticketQuantity = 1 // Resetear cantidad al seleccionar nuevo ticket
+      this.ticketQuantity = 1
     },
 
     increaseQuantity() {
@@ -331,7 +331,6 @@ export const useTicketStore = defineStore('ticket', {
       }
     },
 
-    // Guardar ticket comprado en localStorage
     saveTicketToStorage() {
       const tickets = JSON.parse(localStorage.getItem('purchasedTickets') || '[]')
       
@@ -348,7 +347,6 @@ export const useTicketStore = defineStore('ticket', {
         ubicacion: this.selectedEvent.location,
         usado: false,
         fechaCompra: new Date().toISOString(),
-        // Agregar detalles del ticket
         gate: this.ticketDetails.gate,
         seat: this.ticketDetails.seat
       }
@@ -356,38 +354,22 @@ export const useTicketStore = defineStore('ticket', {
       tickets.push(newTicket)
       localStorage.setItem('purchasedTickets', JSON.stringify(tickets))
       
-      // También actualizar el array de tickets en el state
       this.tickets = tickets
     },
 
-    // Validar un ticket (para el operador) con seguridad mejorada
     validateTicket(identifier, operator = 'unknown') {
       const tickets = JSON.parse(localStorage.getItem('purchasedTickets') || '[]')
-      
-      // 1. Sanitizar entrada
       const sanitizedInput = QRSecurityService.sanitizeInput(identifier)
       
-      // 2. Validar formato si es un código QR
       if (sanitizedInput.startsWith('TKT-')) {
         if (!QRSecurityService.validateFormat(sanitizedInput)) {
-          return { 
-            valid: false, 
-            message: '❌ Formato de código QR inválido',
-            fraudDetected: true
-          }
+          return { valid: false, message: '❌ Formato de código QR inválido', fraudDetected: true }
         }
-        
-        // 3. Verificar checksum
         if (!QRSecurityService.verifyChecksum(sanitizedInput)) {
-          return { 
-            valid: false, 
-            message: '🚨 Código QR alterado o falsificado',
-            fraudDetected: true
-          }
+          return { valid: false, message: '🚨 Código QR alterado o falsificado', fraudDetected: true }
         }
       }
       
-      // 4. Verificar duplicados recientes
       const duplicateCheck = QRSecurityService.checkRecentScans(sanitizedInput)
       if (duplicateCheck.isDuplicate) {
         return { 
@@ -398,7 +380,6 @@ export const useTicketStore = defineStore('ticket', {
         }
       }
       
-      // 5. Buscar ticket
       const normalizedInput = sanitizedInput.replace(/\./g, '').replace(/-/g, '').toUpperCase()
       const ticket = tickets.find(t => {
         const normalizedCode = t.codigo.replace(/\./g, '').replace(/-/g, '').toUpperCase()
@@ -407,70 +388,39 @@ export const useTicketStore = defineStore('ticket', {
       })
       
       if (!ticket) {
-        return { 
-          valid: false, 
-          message: '❌ Ticket no encontrado en el sistema',
-          fraudDetected: false
-        }
+        return { valid: false, message: '❌ Ticket no encontrado en el sistema', fraudDetected: false }
       }
       
-      // 6. Validar integridad del ticket
       const integrityCheck = QRSecurityService.validateIntegrity(ticket)
       if (!integrityCheck.valid) {
-        return {
-          valid: false,
-          message: `🚨 ${integrityCheck.reason}`,
-          fraudDetected: true,
-          ticket
-        }
+        return { valid: false, message: `🚨 ${integrityCheck.reason}`, fraudDetected: true, ticket }
       }
       
-      // 7. Verificar si ya fue usado
       if (ticket.usado) {
         const usedDate = ticket.fechaUso ? new Date(ticket.fechaUso).toLocaleString() : 'Fecha desconocida'
-        return { 
-          valid: false, 
-          message: `⛔ Ticket ya utilizado el ${usedDate}`,
-          ticket,
-          fraudDetected: false
-        }
+        return { valid: false, message: `⛔ Ticket ya utilizado el ${usedDate}`, ticket, fraudDetected: false }
       }
       
-      // 8. Registrar escaneo exitoso
       QRSecurityService.recordScan(sanitizedInput, operator)
       
-      return { 
-        valid: true, 
-        message: '✅ Ticket válido - Acceso autorizado',
-        ticket,
-        fraudDetected: false
-      }
+      return { valid: true, message: '✅ Ticket válido - Acceso autorizado', ticket, fraudDetected: false }
     },
 
-    // Marcar ticket como usado
     markTicketAsUsed(ticketCode) {
       const tickets = JSON.parse(localStorage.getItem('purchasedTickets') || '[]')
-      
       const ticketIndex = tickets.findIndex(t => t.codigo === ticketCode)
-      
       if (ticketIndex !== -1) {
         tickets[ticketIndex].usado = true
         tickets[ticketIndex].fechaUso = new Date().toISOString()
         localStorage.setItem('purchasedTickets', JSON.stringify(tickets))
-        
-        // Actualizar el array de tickets en el state
         this.tickets = tickets
-        
         return true
       }
-      
       return false
     },
 
-    // Obtener estadísticas para el operador
     getTicketStats() {
       const tickets = JSON.parse(localStorage.getItem('purchasedTickets') || '[]')
-      
       return {
         total: tickets.length,
         usados: tickets.filter(t => t.usado).length,
@@ -479,9 +429,7 @@ export const useTicketStore = defineStore('ticket', {
     },
 
     goBack() {
-      if (this.currentStep > 1) {
-        this.currentStep--
-      }
+      if (this.currentStep > 1) this.currentStep--
     },
 
     getStepClass(step) {
@@ -495,23 +443,9 @@ export const useTicketStore = defineStore('ticket', {
       this.selectedEvent = null
       this.selectedTicket = null
       this.ticketQuantity = 1
-      this.personalData = {
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        document: ''
-      }
-      this.paymentData = {
-        cardNumber: '',
-        cardName: '',
-        expiry: '',
-        cvv: ''
-      }
-      this.ticketDetails = {
-        gate: '',
-        seat: ''
-      }
+      this.personalData = { firstName: '', lastName: '', email: '', phone: '', document: '' }
+      this.paymentData = { cardNumber: '', cardName: '', expiry: '', cvv: '' }
+      this.ticketDetails = { gate: '', seat: '' }
       this.ticketCode = ''
       this.processing = false
     },
@@ -522,11 +456,45 @@ export const useTicketStore = defineStore('ticket', {
       this.loadPurchasedTickets()
     },
     
-    // Cargar tickets comprados desde localStorage
     loadPurchasedTickets() {
       const purchasedTickets = JSON.parse(localStorage.getItem('purchasedTickets') || '[]')
       this.tickets = purchasedTickets
       console.log('📋 Tickets cargados desde localStorage:', this.tickets.length)
+    },
+
+    // 🔹 Funciones agregadas del segundo código:
+    updateTicketDetails(details) {
+      this.ticketDetails = { ...this.ticketDetails, ...details }
+    },
+
+    async downloadTicketPDF() {
+      return {
+        event: this.selectedEvent,
+        ticket: this.selectedTicket,
+        personalData: this.personalData,
+        ticketCode: this.ticketCode,
+        ticketDetails: this.ticketDetails
+      }
+    },
+
+    async sendTicketByEmail(email) {
+      const to = email || this.personalData.email
+      if (!to) throw new Error('No se ha proporcionado un correo electrónico válido.')
+
+      return {
+        to,
+        subject: `Tu ticket para ${this.selectedEvent?.name}`,
+        body: {
+          event: this.selectedEvent,
+          ticket: this.selectedTicket,
+          personalData: this.personalData,
+          ticketCode: this.ticketCode,
+          ticketDetails: this.ticketDetails
+        }
+      }
     }
+  }
+})
+
   }
 })

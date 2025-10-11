@@ -148,7 +148,7 @@ export const useTicketStore = defineStore('ticket', {
           }
           
           // TODO: En el futuro, se puede hacer una llamada al backend para actualizar la disponibilidad
-          // await fetch(`http://localhost:3000/api/ticket-types/${this.selectedTicket.id}/reduce`, {
+          // await fetch(`/api/ticket-types/${this.selectedTicket.id}/reduce`, {
           //   method: 'POST',
           //   headers: { 'Content-Type': 'application/json' },
           //   body: JSON.stringify({ quantity: this.ticketQuantity })
@@ -165,7 +165,7 @@ export const useTicketStore = defineStore('ticket', {
     async loadEventsFromAPI() {
       try {
         console.log('🔄 Cargando eventos desde la API...')
-        const response = await fetch('http://localhost:3000/api/events')
+        const response = await fetch('/api/events')
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
@@ -212,7 +212,7 @@ export const useTicketStore = defineStore('ticket', {
     async loadTicketTypesForEvent(eventId) {
       try {
         console.log(`🎫 Cargando tipos de tickets para evento ${eventId}...`)
-        const response = await fetch(`http://localhost:3000/api/ticket-types/event/${eventId}`)
+        const response = await fetch(`/api/ticket-types/event/${eventId}`)
         
         if (!response.ok) {
           console.warn(`⚠️ No se pudieron cargar tickets para evento ${eventId}`)
@@ -253,7 +253,7 @@ export const useTicketStore = defineStore('ticket', {
         console.log('💾 Guardando ticket en la base de datos...')
         
         // 1. Crear o buscar el usuario (cliente)
-        const userResponse = await fetch('http://localhost:3000/api/users/register', {
+        const userResponse = await fetch('/api/users/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -278,7 +278,7 @@ export const useTicketStore = defineStore('ticket', {
         } else if (userData.message && userData.message.includes('ya está registrado')) {
           // Si el email ya existe, buscar el usuario
           console.log('⚠️ Email ya registrado, buscando usuario...')
-          const allUsersResponse = await fetch('http://localhost:3000/api/users')
+          const allUsersResponse = await fetch('/api/users')
           if (allUsersResponse.ok) {
             const allUsersData = await allUsersResponse.json()
             const existingUser = allUsersData.data.find(u => u.email === this.personalData.email)
@@ -294,7 +294,7 @@ export const useTicketStore = defineStore('ticket', {
         }
         
         // 2. Crear el ticket en la base de datos
-        const ticketResponse = await fetch('http://localhost:3000/api/tickets', {
+        const ticketResponse = await fetch('/api/tickets', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

@@ -282,7 +282,7 @@ export default {
         formData.append('pdf', pdfBlob, `Entrada-${ticketCode.value}.pdf`)
         
         // URL del backend - ajusta según tu configuración
-        const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+        const backendUrl = import.meta.env.VITE_API_URL || ''
         
         const response = await fetch(`${backendUrl}/api/send-ticket-email`, {
           method: 'POST',

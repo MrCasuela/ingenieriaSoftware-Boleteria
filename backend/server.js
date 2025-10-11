@@ -5,6 +5,7 @@ import multer from 'multer';
 import { connectDB } from './src/config/database.js';
 import { sendTicketEmail } from './src/services/emailService.js';
 import logger from './src/utils/logger.js';
+import seedDatabase from './src/config/seed.js';
 
 // Importar modelos para inicializar asociaciones
 import './src/models/index.js';
@@ -139,6 +140,11 @@ const startServer = async () => {
     try {
       await connectDB();
       logger.success('DATABASE', 'Conexión a base de datos establecida');
+      
+      // Ejecutar seed para crear usuarios predeterminados
+      logger.info('DATABASE', 'Verificando usuarios predeterminados...');
+      await seedDatabase();
+      logger.success('DATABASE', 'Verificación de usuarios completada');
     } catch (dbError) {
       logger.warn('DATABASE', 'Base de datos no disponible, pero el servidor continuará');
       logger.warn('DATABASE', 'La funcionalidad de email seguirá funcionando');

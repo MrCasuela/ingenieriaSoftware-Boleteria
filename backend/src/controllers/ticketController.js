@@ -2,6 +2,7 @@ import Ticket from '../models/Ticket.js';
 import TicketType from '../models/TicketType.js';
 import Event from '../models/Event.js';
 import User from '../models/User.js';
+import sequelize from '../config/database.js';
 import { Op } from 'sequelize';
 
 /**
@@ -127,39 +128,138 @@ export const getTicketByCode = async (req, res) => {
 };
 
 /**
+ * Obtener tickets por RUT del usuario
+ */
+export const getTicketsByRut = async (req, res) => {
+  try {
+    const { rut } = req.params;
+    
+    console.log(`🔍 Buscando tickets para RUT: ${rut}`);
+    
+    // Buscar usuario por RUT
+    const user = await User.findOne({
+      where: { rut: rut }
+    });
+    
+    if (!user) {
+      console.log(`❌ No se encontró usuario con RUT: ${rut}`);
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontró usuario con este RUT',
+        tickets: []
+      });
+    }
+    
+    console.log(`✅ Usuario encontrado: ${user.first_name} ${user.last_name}`);
+    
+    // Buscar tickets del usuario
+    const tickets = await Ticket.findAll({
+      where: { user_id: user.id },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'email', 'first_name', 'last_name', 'rut']
+        },
+        {
+          model: TicketType,
+          as: 'ticketType',
+          include: [{
+            model: Event,
+            as: 'event',
+            attributes: ['id', 'name', 'date', 'location']
+          }]
+        }
+      ],
+      order: [['purchase_date', 'DESC']]
+    });
+    
+    console.log(`📋 Tickets encontrados: ${tickets.length}`);
+    
+    // Formatear tickets para el frontend (compatible con ticketStore)
+    const formattedTickets = tickets.map(ticket => ({
+      id: ticket.id,
+      codigo: ticket.ticket_code,
+      nombre: `${user.first_name} ${user.last_name}`,
+      rut: user.rut,
+      email: user.email,
+      evento: ticket.ticketType?.event?.name || 'Evento desconocido',
+      tipo: ticket.ticketType?.name || 'Tipo desconocido',
+      precio: ticket.ticketType?.price || 0,
+      usado: ticket.is_used,
+      fechaUso: ticket.used_at,
+      fechaCompra: ticket.purchase_date,
+      validadoPor: ticket.validated_by
+    }));
+    
+    res.json({
+      success: true,
+      tickets: formattedTickets,
+      user: {
+        id: user.id,
+        nombre: `${user.first_name} ${user.last_name}`,
+        rut: user.rut,
+        email: user.email
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error al buscar tickets por RUT:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al buscar tickets por RUT',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
  * Crear un nuevo ticket (compra)
  */
 export const createTicket = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
   try {
     const ticketData = req.body;
     
     // Validar datos requeridos
     if (!ticketData.user_id || !ticketData.ticket_type_id || !ticketData.ticket_code) {
+      await transaction.rollback();
       return res.status(400).json({
         success: false,
         message: 'Faltan datos requeridos (user_id, ticket_type_id, ticket_code)'
       });
     }
     
+    // Cantidad a comprar (por defecto 1)
+    const quantity = ticketData.quantity || 1;
+    
     // Verificar que el tipo de ticket existe y tiene capacidad
-    const ticketType = await TicketType.findByPk(ticketData.ticket_type_id);
+    const ticketType = await TicketType.findByPk(ticketData.ticket_type_id, { 
+      transaction,
+      lock: transaction.LOCK.UPDATE 
+    });
+    
     if (!ticketType) {
+      await transaction.rollback();
       return res.status(404).json({
         success: false,
         message: 'Tipo de ticket no encontrado'
       });
     }
     
-    if (ticketType.available_capacity <= 0) {
+    // Verificar capacidad disponible
+    if (ticketType.available_capacity < quantity) {
+      await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: 'No hay capacidad disponible para este tipo de ticket'
+        message: `Solo hay ${ticketType.available_capacity} tickets disponibles de este tipo`
       });
     }
     
     // Verificar que el usuario existe
-    const user = await User.findByPk(ticketData.user_id);
+    const user = await User.findByPk(ticketData.user_id, { transaction });
     if (!user) {
+      await transaction.rollback();
       return res.status(404).json({
         success: false,
         message: 'Usuario no encontrado'
@@ -171,24 +271,58 @@ export const createTicket = async (req, res) => {
       ...ticketData,
       purchase_date: ticketData.purchase_date || new Date(),
       status: ticketData.status || 'active',
-      is_used: false
+      is_used: false,
+      quantity: quantity
+    }, { transaction });
+    
+    // Reducir la capacidad disponible del tipo de ticket
+    await ticketType.decrement('available_capacity', { 
+      by: quantity,
+      transaction 
     });
     
-    // Reducir la capacidad disponible
-    await ticketType.decrement('available_capacity', { by: 1 });
-    
     // Actualizar el evento también
-    const event = await Event.findByPk(ticketType.event_id);
+    const event = await Event.findByPk(ticketType.event_id, { 
+      transaction,
+      lock: transaction.LOCK.UPDATE 
+    });
+    
     if (event) {
-      await event.decrement('available_capacity', { by: 1 });
+      await event.decrement('available_capacity', { 
+        by: quantity,
+        transaction 
+      });
     }
+    
+    // Confirmar transacción
+    await transaction.commit();
+    
+    // Recargar ticket con asociaciones
+    const fullTicket = await Ticket.findByPk(ticket.id, {
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'email', 'first_name', 'last_name']
+        },
+        {
+          model: TicketType,
+          as: 'ticketType',
+          include: [{
+            model: Event,
+            as: 'event'
+          }]
+        }
+      ]
+    });
     
     res.status(201).json({
       success: true,
       message: 'Ticket creado exitosamente',
-      data: ticket
+      data: fullTicket
     });
   } catch (error) {
+    await transaction.rollback();
     console.error('Error al crear ticket:', error);
     res.status(500).json({
       success: false,

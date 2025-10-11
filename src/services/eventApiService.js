@@ -3,7 +3,7 @@
  * Conecta el frontend con el backend para gestionar eventos
  */
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = '/api';
 
 /**
  * Obtener todos los eventos

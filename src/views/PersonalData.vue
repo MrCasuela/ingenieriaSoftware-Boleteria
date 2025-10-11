@@ -140,11 +140,34 @@ export default {
 
     const processPayment = async () => {
       try {
-        await store.processPayment()
+        const result = await store.processPayment()
+        console.log('✅ Pago completado:', result)
         router.push('/confirmation')
       } catch (error) {
         console.error('Error processing payment:', error)
-        alert('Error procesando el pago. Intenta nuevamente.')
+        
+        // Mostrar mensaje de error específico
+        let errorMessage = 'Error procesando el pago. '
+        
+        if (error.message.includes('Número de tarjeta inválido')) {
+          errorMessage += 'Por favor verifica el número de tu tarjeta.'
+        } else if (error.message.includes('vencimiento')) {
+          errorMessage += 'La tarjeta está vencida o la fecha es inválida.'
+        } else if (error.message.includes('CVV')) {
+          errorMessage += 'El código de seguridad (CVV) es inválido.'
+        } else if (error.message.includes('Fondos insuficientes')) {
+          errorMessage += 'Fondos insuficientes. Intenta con otra tarjeta.'
+        } else if (error.message.includes('bloqueada')) {
+          errorMessage += 'Tu tarjeta está bloqueada. Contacta a tu banco.'
+        } else if (error.message.includes('rechazada')) {
+          errorMessage += 'La transacción fue rechazada por el banco.'
+        } else if (error.message.includes('Límite de crédito')) {
+          errorMessage += 'Has excedido el límite de crédito.'
+        } else {
+          errorMessage += error.message || 'Intenta nuevamente.'
+        }
+        
+        alert(errorMessage)
       }
     }
 

@@ -197,14 +197,14 @@
         <div class="section-header">
           <h2>🎫 Gestión de Tipos de Ticket</h2>
           <div class="header-controls">
-            <select v-model="selectedEventForTickets" class="event-selector">
+            <select v-model.number="selectedEventForTickets" class="event-selector">
               <option value="">Seleccione un evento...</option>
               <option v-for="event in events" :key="event.id" :value="event.id">
                 {{ event.name }}
               </option>
             </select>
             <button 
-              @click="showTicketTypeForm = true" 
+              @click="openNewTicketTypeForm" 
               class="btn-primary"
               :disabled="!selectedEventForTickets"
             >
@@ -276,7 +276,7 @@
             <form @submit.prevent="saveTicketType" class="ticket-type-form">
               <div class="form-group">
                 <label>Evento *</label>
-                <select v-model="ticketTypeForm.eventId" required :disabled="editingTicketType">
+                <select v-model.number="ticketTypeForm.eventId" required :disabled="editingTicketType">
                   <option value="">Seleccione un evento...</option>
                   <option v-for="event in events" :key="event.id" :value="event.id">
                     {{ event.name }}
@@ -422,6 +422,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
+import * as ticketTypeApi from '../services/ticketTypeApiService'
+import * as eventApi from '../services/eventApiService'
 
 export default {
   name: 'AdminPanel',
@@ -491,75 +493,59 @@ export default {
     })
 
     // Methods
-    const loadData = () => {
-      // Cargar eventos desde localStorage
-      const savedEvents = localStorage.getItem('adminEvents')
-      if (savedEvents) {
-        events.value = JSON.parse(savedEvents)
-      } else {
-        // Datos de ejemplo
-        events.value = [
-          {
-            id: 1,
-            name: 'Concierto Rock en Vivo',
-            category: 'Concierto',
-            description: 'La mejor banda de rock en un espectáculo inolvidable',
-            date: '2025-12-15',
-            time: '20:00',
-            venue: 'Estadio Nacional',
-            city: 'Santiago',
-            totalCapacity: 5000,
-            imageUrl: 'https://picsum.photos/seed/concert1/400/300'
-          }
-        ]
-        saveEvents()
+    const loadData = async () => {
+      try {
+        // Cargar todos los tipos de ticket desde la API
+        const ticketTypesResponse = await ticketTypeApi.getAllTicketTypes()
+        
+        // Mapear datos de la API al formato del frontend
+        if (ticketTypesResponse && ticketTypesResponse.success && Array.isArray(ticketTypesResponse.data)) {
+          ticketTypes.value = ticketTypesResponse.data.map(tt => ({
+            id: tt.id,
+            eventId: tt.event_id,
+            name: tt.name,
+            description: tt.description || '',
+            price: tt.price,
+            capacity: tt.total_capacity,
+            sold: tt.sold_tickets || 0
+          }))
+          console.log('✅ Tipos de ticket cargados desde la base de datos:', ticketTypes.value.length)
+        } else {
+          console.log('ℹ️ No hay tipos de ticket en la base de datos')
+          ticketTypes.value = []
+        }
+      } catch (error) {
+        console.error('Error al cargar tipos de ticket:', error)
+        // Si falla la carga, inicializar con array vacío
+        ticketTypes.value = []
       }
 
-      // Cargar tipos de ticket
-      const savedTicketTypes = localStorage.getItem('adminTicketTypes')
-      if (savedTicketTypes) {
-        ticketTypes.value = JSON.parse(savedTicketTypes)
-      } else {
-        // Datos de ejemplo
-        ticketTypes.value = [
-          {
-            id: 1,
-            eventId: 1,
-            name: 'VIP',
-            description: 'Acceso preferente y meet & greet',
-            price: 50000,
-            capacity: 100,
-            sold: 45
-          },
-          {
-            id: 2,
-            eventId: 1,
-            name: 'Platea',
-            description: 'Asientos numerados',
-            price: 30000,
-            capacity: 500,
-            sold: 320
-          },
-          {
-            id: 3,
-            eventId: 1,
-            name: 'General',
-            description: 'Acceso general de pie',
-            price: 15000,
-            capacity: 4400,
-            sold: 2100
-          }
-        ]
-        saveTicketTypes()
+      try {
+        // Cargar eventos desde la API
+        const eventsResponse = await eventApi.getAllEvents()
+        
+        if (eventsResponse && eventsResponse.success && Array.isArray(eventsResponse.data)) {
+          events.value = eventsResponse.data.map(event => ({
+            id: event.id,
+            name: event.name,
+            category: event.category || 'Otro',
+            description: event.description || '',
+            date: event.date ? new Date(event.date).toISOString().split('T')[0] : '',
+            time: event.date ? new Date(event.date).toTimeString().slice(0, 5) : '',
+            venue: event.location || '',
+            city: event.city || '',
+            totalCapacity: event.total_capacity || 0,
+            imageUrl: event.image || 'https://picsum.photos/400/300'
+          }))
+          console.log('✅ Eventos cargados desde la base de datos:', events.value.length)
+        } else {
+          console.log('ℹ️ No hay eventos en la base de datos')
+          events.value = []
+        }
+      } catch (error) {
+        console.error('Error al cargar eventos:', error)
+        events.value = []
       }
-    }
-
-    const saveEvents = () => {
-      localStorage.setItem('adminEvents', JSON.stringify(events.value))
-    }
-
-    const saveTicketTypes = () => {
-      localStorage.setItem('adminTicketTypes', JSON.stringify(ticketTypes.value))
     }
 
     const formatDate = (dateString) => {
@@ -629,13 +615,19 @@ export default {
     }
 
     const resetTicketTypeForm = () => {
+      const eventId = selectedEventForTickets.value || ''
+      console.log('🔄 Reseteando formulario con eventId:', eventId)
+      console.log('🔄 Tipo de eventId:', typeof eventId)
+      
       ticketTypeForm.value = {
-        eventId: selectedEventForTickets.value || '',
+        eventId: eventId,
         name: '',
         description: '',
         price: 0,
         capacity: 0
       }
+      
+      console.log('🔄 ticketTypeForm después de reset:', ticketTypeForm.value)
     }
 
     const editEvent = (event) => {
@@ -678,53 +670,129 @@ export default {
       activeTab.value = 'ticketTypes'
     }
 
+    const openNewTicketTypeForm = () => {
+      resetTicketTypeForm()
+      showTicketTypeForm.value = true
+    }
+
     const editTicketType = (ticketType) => {
       editingTicketType.value = ticketType.id
       ticketTypeForm.value = { ...ticketType }
       showTicketTypeForm.value = true
     }
 
-    const saveTicketType = () => {
-      if (editingTicketType.value) {
-        // Actualizar tipo de ticket existente
-        const index = ticketTypes.value.findIndex(tt => tt.id === editingTicketType.value)
-        if (index !== -1) {
-          ticketTypes.value[index] = {
-            ...ticketTypeForm.value,
-            id: editingTicketType.value,
-            sold: ticketTypes.value[index].sold || 0
+    const saveTicketType = async () => {
+      try {
+        // Log de depuración para ver el formulario completo
+        console.log('==================== INICIO SAVE TICKET TYPE ====================')
+        console.log('🔍 ticketTypeForm.value completo:', JSON.stringify(ticketTypeForm.value, null, 2))
+        console.log('🔍 ticketTypeForm.value.eventId:', ticketTypeForm.value.eventId, '(tipo:', typeof ticketTypeForm.value.eventId, ')')
+        console.log('🔍 selectedEventForTickets.value:', selectedEventForTickets.value, '(tipo:', typeof selectedEventForTickets.value, ')')
+        
+        // Validar que el eventId no esté vacío
+        if (!ticketTypeForm.value.eventId) {
+          console.error('❌ VALIDACIÓN FALLIDA: eventId está vacío')
+          alert('❌ Error: Debe seleccionar un evento')
+          return
+        }
+        
+        // Preparar datos para la API (mapear campos del frontend al backend)
+        const ticketTypeData = {
+          event_id: ticketTypeForm.value.eventId,
+          name: ticketTypeForm.value.name,
+          description: ticketTypeForm.value.description || '',
+          price: parseFloat(ticketTypeForm.value.price),
+          total_capacity: parseInt(ticketTypeForm.value.capacity)
+        }
+        
+        console.log('📤 ticketTypeData a enviar:', JSON.stringify(ticketTypeData, null, 2))
+
+        if (editingTicketType.value) {
+          // Actualizar tipo de ticket existente
+          const response = await ticketTypeApi.updateTicketType(editingTicketType.value, ticketTypeData)
+          
+          // Actualizar en el array local
+          const index = ticketTypes.value.findIndex(tt => tt.id === editingTicketType.value)
+          if (index !== -1 && response.success && response.data) {
+            ticketTypes.value[index] = {
+              id: response.data.id,
+              eventId: response.data.event_id,
+              name: response.data.name,
+              description: response.data.description || '',
+              price: response.data.price,
+              capacity: response.data.total_capacity,
+              sold: response.data.sold_tickets || 0
+            }
+          }
+          alert('✅ Tipo de ticket actualizado correctamente')
+        } else {
+          // Crear nuevo tipo de ticket
+          const response = await ticketTypeApi.createTicketType(ticketTypeData)
+          
+          console.log('📦 Respuesta completa del servidor:', response)
+          console.log('✅ response.success:', response.success)
+          console.log('✅ response.data:', response.data)
+          console.log('✅ Tipo de response.data:', typeof response.data)
+          
+          // Agregar al array local
+          if (response && response.success && response.data) {
+            console.log('✅ Entrando a crear newTicketType...')
+            console.log('✅ response.data.id:', response.data.id)
+            console.log('✅ response.data.event_id:', response.data.event_id)
+            
+            const newTicketType = {
+              id: response.data.id,
+              eventId: response.data.event_id,
+              name: response.data.name,
+              description: response.data.description || '',
+              price: response.data.price,
+              capacity: response.data.total_capacity,
+              sold: response.data.sold_tickets || 0
+            }
+            ticketTypes.value.push(newTicketType)
+            console.log('✅ Tipo de ticket agregado al array local:', newTicketType)
+            alert('✅ Tipo de ticket creado correctamente y guardado en la base de datos')
+          } else {
+            console.error('❌ Respuesta no válida:', { response })
+            throw new Error('La respuesta del servidor no tiene el formato esperado')
           }
         }
-      } else {
-        // Crear nuevo tipo de ticket
-        const newTicketType = {
-          ...ticketTypeForm.value,
-          id: Date.now(),
-          sold: 0
-        }
-        ticketTypes.value.push(newTicketType)
-      }
-      
-      // Actualizar precio mínimo del evento
-      updateEventMinPrice(ticketTypeForm.value.eventId)
-      
-      saveTicketTypes()
-      saveEvents()
-      closeTicketTypeForm()
-    }
-
-    const deleteTicketType = (ticketTypeId) => {
-      if (confirm('¿Estás seguro de eliminar este tipo de ticket?')) {
-        const ticketType = ticketTypes.value.find(tt => tt.id === ticketTypeId)
-        ticketTypes.value = ticketTypes.value.filter(tt => tt.id !== ticketTypeId)
         
         // Actualizar precio mínimo del evento
-        if (ticketType) {
-          updateEventMinPrice(ticketType.eventId)
+        updateEventMinPrice(ticketTypeForm.value.eventId)
+        console.log('==================== FIN SAVE TICKET TYPE (ÉXITO) ====================')
+        closeTicketTypeForm()
+      } catch (error) {
+        console.log('==================== FIN SAVE TICKET TYPE (ERROR) ====================')
+        console.error('❌ Error completo:', error)
+        console.error('❌ Error name:', error.name)
+        console.error('❌ Error message:', error.message)
+        console.error('❌ Error stack:', error.stack)
+        alert('❌ Error al guardar el tipo de ticket: ' + error.message)
+      }
+    }
+
+    const deleteTicketType = async (ticketTypeId) => {
+      if (confirm('¿Estás seguro de eliminar este tipo de ticket?')) {
+        try {
+          const ticketType = ticketTypes.value.find(tt => tt.id === ticketTypeId)
+          
+          // Eliminar desde la API
+          await ticketTypeApi.deleteTicketType(ticketTypeId)
+          
+          // Actualizar array local
+          ticketTypes.value = ticketTypes.value.filter(tt => tt.id !== ticketTypeId)
+          
+          // Actualizar precio mínimo del evento
+          if (ticketType) {
+            updateEventMinPrice(ticketType.eventId)
+          }
+          
+          alert('✅ Tipo de ticket eliminado correctamente')
+        } catch (error) {
+          console.error('Error al eliminar tipo de ticket:', error)
+          alert('❌ Error al eliminar el tipo de ticket: ' + error.message)
         }
-        
-        saveTicketTypes()
-        saveEvents()
       }
     }
 
@@ -779,6 +847,7 @@ export default {
       saveEvent,
       deleteEvent,
       manageTicketTypes,
+      openNewTicketTypeForm,
       editTicketType,
       saveTicketType,
       deleteTicketType,

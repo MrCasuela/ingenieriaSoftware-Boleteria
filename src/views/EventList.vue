@@ -19,7 +19,7 @@
 </template>
 
 <script>
-import { onMounted } from 'vue'
+import { onMounted, onActivated } from 'vue'
 import { useTicketStore } from '../stores/ticketStore.js'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
@@ -35,9 +35,15 @@ export default {
     const router = useRouter()
     const { events } = storeToRefs(store)
 
-    // Resetear el store cuando se vuelve a la página principal
-    onMounted(() => {
+    // Cargar eventos desde la API al montar el componente
+    onMounted(async () => {
       store.resetStore()
+      await store.loadEventsFromAPI()
+    })
+
+    // También recargar cuando se vuelve a activar la vista (para actualizar disponibilidad)
+    onActivated(async () => {
+      await store.loadEventsFromAPI()
     })
 
     const selectEvent = (event) => {

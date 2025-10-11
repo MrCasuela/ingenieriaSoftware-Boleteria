@@ -1,797 +1,309 @@
-# Sistema de Boletería - TicketVue
+# 🎫 Sistema de Boletería para Eventos
 
-Un sistema moderno y completo de compra de entradas con código QR único. **Frontend** desarrollado con Vue.js 3 + **Backend** con Node.js, Express y MySQL. Incluye sistema completo de control de acceso para operadores con validación de tickets mediante escaneo QR o ingreso manual.
+Sistema completo de compra y validación de tickets para eventos con Vue.js, Node.js, Express y MySQL.
 
-## 🏗️ Arquitectura del Sistema
+## 📋 Descripción
+
+Aplicación web completa que permite:
+- **Compra de tickets**: Exploración de eventos y compra segura de entradas
+- **Validación QR**: Validación mediante escaneo QR o ingreso manual (RUT/código)
+- **Panel de administración**: Gestión de eventos, tipos de tickets y usuarios
+- **Base de datos MySQL**: Almacenamiento persistente con transacciones atómicas
+
+## 🏗️ Arquitectura
 
 ### Frontend (Vue.js 3)
-- **Framework**: Vue 3 con Composition API
-- **Estado Global**: Pinia
-- **Routing**: Vue Router 4
-- **UI Framework**: Bootstrap 5
-- **QR Generation**: QRCode.js
+- Framework: Vue 3 + Composition API
+- State Management: Pinia
+- Routing: Vue Router
+- UI: Bootstrap 5
+- QR: QRCode.js + jsPDF
 
-### Backend (Node.js + Express + MySQL)
-- **Runtime**: Node.js 16+
-- **Framework**: Express.js
-- **Base de Datos**: MySQL 8.0+
-- **ORM**: Sequelize
-- **Autenticación**: JWT + bcrypt
-- **Arquitectura**: REST API con herencia de clases
+### Backend (Node.js + Express)
+- Framework: Express.js
+- ORM: Sequelize
+- DB: MySQL 8.0
+- Auth: bcrypt + JWT
 
-## 🎯 Historias de Usuario
-
-**ING-1-HU1**: Como cliente quiero comprar una entrada y recibir un código QR único con mis datos personales para poder ingresar al evento en menos de 2 minutos.
-
-**ING-4-HU3**: Como operador quiero escanear el código QR o carnet con la tablet para confirmar si la persona puede ingresar al evento y entregar la pulsera.
-
----
-
-## 📑 Tabla de Contenidos
-
-- [Características](#-características)
-- [Instalación y Uso](#-instalación-y-uso)
-- [Backend Setup](#-backend-setup)
-- [Sistema de Operadores](#-sistema-de-operadores)
-- [Sistema de Seguridad](#-sistema-de-seguridad-mejorado)
-- [Modelo de Datos](#-modelo-de-datos)
-- [Rutas del Sistema](#-rutas-del-sistema)
-- [Estructura del Proyecto](#️-estructura-del-proyecto)
-- [Tecnologías](#️-tecnologías-utilizadas)
-
-> **📖 Para información detallada sobre seguridad, consulta:** [SECURITY_GUIDE.md](./SECURITY_GUIDE.md)
-> **📖 Para información del backend, consulta:** [backend/README.md](./backend/README.md)
-
----
-
-## ✨ Características
-
-### Cliente (Frontend)
-- ✅ **Arquitectura Vue Modular** con separación de responsabilidades
-- ✅ **4 Vistas principales**: Lista de eventos, Selección de entradas, Datos personales, Confirmación
-- ✅ **Código QR único** generado con datos del ticket y comprador
-- ✅ **Estado global** con Pinia para manejo de datos
-- ✅ **Routing** con Vue Router para navegación entre vistas
-- ✅ **Componentes reutilizables** (EventCard, TicketCard, etc.)
-- ✅ **Validación de formularios** y formateo automático (RUT, tarjeta, etc.)
-- ✅ **Selector de cantidad** de entradas con límites
-- ✅ **Diseño responsivo** con Bootstrap 5
-- ✅ **Proceso de compra** en menos de 2 minutos
-- ✅ **Almacenamiento automático** de tickets en localStorage
-- ✅ **Botón Home global** con navegación rápida desde cualquier vista
-
-### Operador (Frontend)
-- ✅ **Panel de control** dedicado para validación de tickets
-- ✅ **Autenticación** con sesión persistente (24 horas)
-- ✅ **Escaneo QR mejorado** con sistema de seguridad avanzado
-- ✅ **Validación manual** por código o RUT
-- ✅ **Dashboard con estadísticas** en tiempo real
-- ✅ **Control de tickets usados** para evitar duplicados
-- ✅ **Interfaz intuitiva** adaptada a tablets
-
-### Backend (API)
-- ✅ **Arquitectura REST** con Express.js
-- ✅ **Base de datos MySQL** con Sequelize ORM
-- ✅ **Herencia de clases** (Usuario → Cliente, Operador, Administrador)
-- ✅ **Single Table Inheritance** para eficiencia
-- ✅ **Autenticación JWT** con tokens seguros
-- ✅ **Encriptación bcrypt** para contraseñas
-- ✅ **Relaciones completas** entre entidades
-- ✅ **Validación de datos** a nivel de modelo
-- ✅ **Escalabilidad** para futuros módulos
-- ✅ **Sistema de auditoría** completo con registro de operaciones
-- ✅ **Detección de fraudes** y códigos falsificados
-- ✅ **Feedback visual/sonoro** con vibración en validaciones
-- ✅ **Verificación de checksums** para integridad de códigos QR
-
-### 🔒 Seguridad
-
-- ✅ **Códigos QR con checksum** - Formato: `TKT-XXXXX-XXXX` (checksum de 4 dígitos)
-- ✅ **Validación de integridad** - Detección de códigos alterados o falsificados
-- ✅ **Control de escaneos duplicados** - Prevención de reutilización (caché de 5 minutos)
-- ✅ **Registro de auditoría** - Todas las validaciones quedan registradas con timestamp
-- ✅ **Detección de actividad sospechosa** - Alertas por múltiples intentos fallidos
-- ✅ **Encriptación de sesiones** - Tokens de sesión cifrados para operadores
-- ✅ **Fingerprinting de dispositivos** - Identificación única de tablets
-- ✅ **Sanitización de entradas** - Prevención de inyecciones
-
----
-
-## 🚀 Instalación y Uso
-
-### Frontend (Vue.js)
-
-#### Configuración Inicial
-
-1. **Instalar dependencias** (solo la primera vez):
-```bash
-npm install
-```
-
-2. **Ejecutar en desarrollo**:
-```bash
-npm run dev
-```
-
-3. **Abrir en el navegador**:
-```
-http://localhost:3003/
-```
-
-#### Build para Producción
-
-```bash
-npm run build
-```
-
-Los archivos optimizados se generan en la carpeta `dist/`
-
-#### Probar en Móvil/Tablet
-
-1. Averigua tu IP local:
-   ```bash
-   # Windows
-   ipconfig
-   
-   # Mac/Linux
-   ifconfig
-   ```
-
-2. Accede desde el móvil:
-   ```
-   http://TU_IP_LOCAL:3003
-   ```
-
----
-
-## 🔧 Backend Setup
+## 🚀 Instalación y Ejecución
 
 ### Prerrequisitos
-
-- Node.js 16+ instalado
-- MySQL 8.0+ instalado y corriendo
+- Node.js 16+
+- MySQL 8.0+
 - npm o yarn
 
-### Instalación
+### 1. Instalar Dependencias
 
-1. **Navegar a la carpeta backend**:
-```bash
-cd backend
-```
-
-2. **Instalar dependencias**:
+**Frontend:**
 ```bash
 npm install
 ```
 
-3. **Configurar variables de entorno**:
+**Backend:**
 ```bash
-# Copiar archivo de ejemplo
-cp .env.example .env
-
-# Editar .env con tus configuraciones
+cd backend
+npm install
 ```
 
-Ejemplo de `.env`:
+### 2. Configurar Base de Datos
+
+Crear base de datos en MySQL:
+```sql
+CREATE DATABASE ticketing_system;
+```
+
+Configurar variables de entorno (`backend/.env`):
 ```env
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=tu_password
+DB_NAME=ticketing_system
+DB_PORT=3306
 PORT=3000
 NODE_ENV=development
-
-# MySQL Database
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=ticketvue
-DB_USER=root
-DB_PASSWORD=tu_contraseña_mysql
-
-# JWT
-JWT_SECRET=clave_super_secreta_cambiar_en_produccion
-JWT_EXPIRE=7d
 ```
 
-4. **Crear base de datos**:
-```sql
-CREATE DATABASE ticketvue CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-O ejecutar el script SQL incluido:
+Inicializar datos:
 ```bash
-mysql -u root -p < database-schema.sql
+cd backend
+npm run seed
 ```
 
-5. **Iniciar servidor**:
-```bash
-# Desarrollo (con auto-reload)
-npm run dev
+### 3. Ejecutar Aplicación
 
-# Producción
+#### Opción A: Docker (Recomendado)
+```bash
+docker-compose up
+```
+
+#### Opción B: Ejecución Local
+
+**Terminal 1 - Backend:**
+```bash
+cd backend
 npm start
 ```
 
-El servidor estará disponible en `http://localhost:3000`
-
-### Verificar instalación
-
+**Terminal 2 - Frontend:**
 ```bash
-# Probar endpoint de salud
-curl http://localhost:3000/
-
-# Respuesta esperada:
-# {
-#   "success": true,
-#   "message": "TicketVue API - Sistema de Boletería",
-#   "version": "1.0.0"
-# }
+npm run dev
 ```
+
+**Acceso:**
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:3000`
+
+## ✨ Funcionalidades Principales
+
+### 1. Sistema de Compra de Tickets
+
+**Flujo:**
+1. Selección de Evento
+2. Selección de Tipo de Ticket y Cantidad
+3. Datos Personales y Pago
+4. Confirmación con QR
+
+**Características:**
+- ✅ Transacciones atómicas en MySQL
+- ✅ Verificación de disponibilidad en tiempo real
+- ✅ Actualización automática de tickets disponibles después de compra
+- ✅ Generación de QR único y seguro con checksum
+- ✅ Descarga de ticket en PDF
+- ✅ Envío por email (configuración requerida)
+
+### 2. Sistema de Validación QR (Panel Operador)
+
+**Acceso:** `/operator/login`
+- Usuario: `operador@ticketsystem.com`
+- Contraseña: `Operador123!`
+
+**Métodos de Validación:**
+1. **Escaneo QR:**
+   - Activa cámara del dispositivo
+   - **Espera 15 segundos a que se presente el código**
+   - **Muestra "Tiempo de Escaneo Expirado" si no hay código**
+   - Valida solo cuando detecta un QR válido
+   - Presiona Enter para simular detección
+
+2. **Ingreso Manual:**
+   - Por código de ticket (TKT-XXXXX-XXXX)
+   - Por RUT del comprador
+
+**Características de Seguridad:**
+- ✅ Verificación de checksum
+- ✅ Detección de tickets duplicados
+- ✅ Detección de códigos falsificados
+- ✅ Registro de auditoría
+- ✅ Protección anti-replay
+- ✅ Validación de integridad
+
+### 3. Panel de Administración
+
+**Acceso:** `/admin`
+- Usuario: `admin@ticketsystem.com`
+- Contraseña: `Admin123!`
+
+**Funcionalidades:**
+- Gestión de eventos
+- Gestión de tipos de tickets
+- Gestión de usuarios
+- Estadísticas en tiempo real
+- Exportación de datos
+
+## 📊 Estructura del Proyecto
+
+```
+ingenieriaSoftware-Boleteria/
+├── src/                         # Frontend
+│   ├── views/
+│   │   ├── EventList.vue       # Lista de eventos
+│   │   ├── TicketSelection.vue # Selección de tickets
+│   │   ├── PersonalData.vue    # Datos y pago
+│   │   ├── Confirmation.vue    # Confirmación con QR
+│   │   ├── OperatorPanel.vue   # Panel de validación
+│   │   └── AdminPanel.vue      # Panel admin
+│   ├── components/             # Componentes
+│   ├── stores/                 # Pinia stores
+│   ├── services/               # Servicios
+│   └── router/                 # Rutas
+├── backend/
+│   ├── src/
+│   │   ├── models/            # Modelos Sequelize
+│   │   ├── controllers/       # Controladores
+│   │   ├── routes/            # Rutas API
+│   │   └── config/            # Configuración
+│   └── server.js              # Servidor Express
+├── docker-compose.yml
+└── package.json
+```
+
+## 🔧 API Endpoints
+
+### Eventos
+- `GET /api/events` - Listar eventos
+- `GET /api/events/:id` - Obtener evento
+- `POST /api/events` - Crear evento
+- `PUT /api/events/:id` - Actualizar evento
+- `DELETE /api/events/:id` - Eliminar evento
+
+### Tipos de Tickets
+- `GET /api/ticket-types` - Listar tipos
+- `GET /api/ticket-types/event/:eventId` - Tipos por evento
+- `GET /api/ticket-types/:id` - Obtener tipo
+- `POST /api/ticket-types` - Crear tipo
+- `PUT /api/ticket-types/:id` - Actualizar tipo
+- `DELETE /api/ticket-types/:id` - Eliminar tipo
+
+### Tickets
+- `GET /api/tickets` - Listar tickets
+- `GET /api/tickets/code/:ticketCode` - Obtener por código
+- `POST /api/tickets` - Crear ticket (compra)
+- `PUT /api/tickets/:ticketCode/validate` - Validar ticket
+- `DELETE /api/tickets/:id` - Cancelar ticket
+
+### Usuarios
+- `POST /api/users/register` - Registrar
+- `POST /api/users/login` - Login
+- `GET /api/users` - Listar usuarios
+- `GET /api/users/:id` - Obtener usuario
+- `PUT /api/users/:id` - Actualizar usuario
+- `DELETE /api/users/:id` - Eliminar usuario
+
+## 🔐 Seguridad
+
+### Sistema QR
+- Códigos con checksum (TKT-XXXXX-XXXX)
+- Verificación de integridad
+- Detección de códigos falsificados
+- Control anti-replay (caché 5 min)
+
+### Autenticación
+- Hash bcrypt para contraseñas
+- Tokens JWT
+- Roles: cliente, operador, administrador
+- Protección de rutas
+
+## 💾 Base de Datos
+
+### Diagrama ER Simplificado
+```
+USERS ─┐
+       ├─► TICKETS ◄─┬─ TICKET_TYPES ◄─── EVENTS ◄─── VENUES
+       │             │
+       └─────────────┘
+```
+
+### Tablas Principales
+- `users`: Usuarios (clientes, operadores, admins)
+- `events`: Eventos
+- `ticket_types`: Tipos de tickets por evento  
+- `tickets`: Tickets comprados
+- `venues`: Lugares de eventos
+
+## 🎯 Mejoras Implementadas
+
+### ✅ Sistema de Compra
+- Transacciones atómicas en MySQL
+- Validación de stock en tiempo real
+- Actualización automática de disponibilidad
+- Recarga de datos desde BD al volver a vistas
+
+### ✅ Sistema de Validación QR
+- **NO valida automáticamente sin código QR**
+- Espera 15 segundos a que se presente el QR
+- Muestra "Tiempo de Escaneo Expirado" si no hay código
+- Feedback visual, sonoro y táctil
+- Registro de auditoría completo
+
+### ✅ Actualización de Tickets
+- Se recargan automáticamente desde MySQL
+- Sincronización entre frontend y backend
+- Refleja cambios en tiempo real
+
+## 🐛 Solución de Problemas
+
+### Frontend no conecta al backend
+- Verificar backend corriendo en puerto 3000
+- Revisar CORS en `backend/server.js`
+- Verificar `VITE_API_URL` en configuración
+
+### Base de datos no conecta
+- Verificar credenciales en `backend/.env`
+- Asegurar MySQL corriendo en puerto 3306
+- Verificar que la BD `ticketing_system` exista
+
+### Tickets no se actualizan
+- Verificar que backend guarde correctamente
+- Revisar consola del navegador
+- Verificar transacciones en MySQL
+
+### QR valida sin código
+- **SOLUCIONADO**: Ahora espera 15s a que se presente QR
+- Muestra timeout si no hay código
+- Presiona Enter para simular detección en pruebas
+
+## 📚 Documentación Adicional
+
+Para más detalles, consulta:
+- **Backend:** `backend/README.md`
+
+## 🤝 Contribuir
+
+1. Fork el repositorio
+2. Crea rama (`git checkout -b feature/NuevaFeature`)
+3. Commit cambios (`git commit -m 'Agregar NuevaFeature'`)
+4. Push (`git push origin feature/NuevaFeature`)
+5. Abre Pull Request
+
+## 📄 Licencia
+
+Proyecto de código abierto - Licencia MIT
+
+## 👥 Equipo
+
+Equipo de Desarrollo - Ingeniería de Software
 
 ---
 
-## 📊 Modelo de Datos
-
-### Herencia de Usuarios
-
-El sistema implementa **Single Table Inheritance** donde todos los tipos de usuarios se almacenan en una sola tabla `users` con un campo discriminador `user_type`:
-
-```
-Usuario (Clase Base)
-├── Cliente        (compra tickets)
-├── Operador       (valida tickets)
-└── Administrador  (gestiona eventos)
-```
-
-### Relaciones Principales
-
-```
-Event          (1:N) TicketType
-Event          (1:N) Ticket
-TicketType     (1:N) Ticket
-Cliente        (1:N) Ticket (como comprador)
-Operador       (1:N) Ticket (como validador)
-Administrador  (1:N) Event (como organizador)
-```
-
-### Tablas
-
-- **users**: Almacena Cliente, Operador y Administrador (con campos específicos)
-- **events**: Eventos disponibles
-- **ticket_types**: Tipos de entrada por evento
-- **tickets**: Entradas compradas
-
-Ver detalles completos en [backend/README.md](./backend/README.md)
-
----
-
-## 🔐 Sistema de Operadores
-
-### Acceso al Panel de Operador
-
-**URL:** `/operator/login`
-
-**Credenciales predefinidas:**
-- **Usuario:** `operador1` | **Contraseña:** `admin123`
-- **Usuario:** `operador2` | **Contraseña:** `admin456`
-
-### Funcionalidades del Panel
-
-#### 📊 Dashboard con Estadísticas
-- **Total Tickets**: Todos los tickets en el sistema
-- **Ingresos**: Tickets ya validados (usados)
-- **Disponibles**: Tickets pendientes de validar
-
-#### 📷 Escaneo de Código QR
-1. Click en "📷 Escanear Código QR"
-2. Permite acceso a la cámara del dispositivo
-3. Apunta al código QR del ticket
-4. El sistema valida automáticamente
-
-**Nota:** La versión actual simula el escaneo (3 segundos). Para producción, se recomienda integrar librerías como `jsQR` o `html5-qrcode`.
-
-#### ⌨️ Validación Manual
-Puedes validar tickets ingresando:
-- **Código del ticket** (ej: `TKT-12345678`)
-- **RUT del comprador** (ej: `12.345.678-9` o `123456789`)
-
-El sistema acepta diferentes formatos (con o sin puntos/guiones).
-
-#### ✅ Proceso de Validación
-
-1. Ingresa código o RUT en el campo de búsqueda
-2. Click en "Validar"
-3. El sistema verifica:
-   - ✅ **Ticket válido**: Muestra datos del asistente y marca como usado
-   - ❌ **Ticket no encontrado**: Error de validación
-   - ❌ **Ticket ya utilizado**: Impide acceso duplicado
-
-#### 🔒 Seguridad
-- Sesión persistente de 24 horas
-- Rutas protegidas con navigation guards
-- Solo operadores autenticados pueden validar tickets
-- Control de tickets duplicados
-
----
-
-## 🗺️ Rutas del Sistema
-
-### Área de Clientes (Pública)
-
-| Ruta | Vista | Descripción |
-|------|-------|-------------|
-| `/` | EventList.vue | Lista de eventos disponibles |
-| `/tickets/:eventId` | TicketSelection.vue | Selección de tipo de entrada |
-| `/personal-data` | PersonalData.vue | Formulario de datos y pago |
-| `/confirmation` | Confirmation.vue | Confirmación con código QR |
-
-### Área de Operadores (Protegida 🔒)
-
-| Ruta | Vista | Descripción |
-|------|-------|-------------|
-| `/operator/login` | OperatorLogin.vue | Autenticación de operadores |
-| `/operator/panel` 🔒 | OperatorPanel.vue | Panel de validación de tickets |
-
-**🔒 = Requiere autenticación**
-
-### Flujo de Navegación - Cliente
-
-```
-┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
-│ Eventos │ -> │ Tickets │ -> │  Datos  │ -> │   QR    │
-└─────────┘    └─────────┘    └─────────┘    └─────────┘
-     /         /tickets/:id   /personal-data /confirmation
-```
-
-### Flujo de Navegación - Operador
-
-```
-┌───────────────┐          ┌──────────────┐
-│ Login         │  --->    │ Panel        │
-│ /operator/login│ (auth)  │ /operator/panel│
-└───────────────┘          └──────────────┘
-```
-
----
-
-## 🗄️ localStorage
-
-El sistema utiliza localStorage para almacenar datos de manera persistente en el navegador.
-
-### Claves Utilizadas
-
-#### 1. `purchasedTickets` - Tickets Comprados
-Almacena todos los tickets adquiridos por los clientes.
-
-**Estructura:**
-```javascript
-{
-  codigo: "TKT-12345678",
-  rut: "12.345.678-9",
-  nombre: "Juan Pérez González",
-  email: "juan@example.com",
-  telefono: "+56912345678",
-  evento: "Concierto Rock en Vivo",
-  tipo: "Entrada VIP",
-  precio: 120,
-  fecha: "15 de Noviembre, 2025",
-  ubicacion: "Estadio Nacional",
-  usado: false,              // true cuando es validado
-  fechaCompra: "2025-10-04T12:30:00.000Z",
-  fechaUso: "2025-11-15T18:45:00.000Z"  // solo si usado=true
-}
-```
-
-#### 2. `operators` - Operadores del Sistema
-Lista de operadores autorizados.
-
-**Estructura:**
-```javascript
-{
-  username: "operador1",
-  password: "admin123",      // ⚠️ En producción usar hash
-  name: "Juan Pérez"
-}
-```
-
-#### 3. `operatorSession` - Sesión Activa
-Almacena la sesión del operador actual (válida por 24 horas).
-
-**Estructura:**
-```javascript
-{
-  username: "operador1",
-  name: "Juan Pérez",
-  timestamp: 1728043200000   // Timestamp del login
-}
-```
-
-#### 4. `eventsData` - Eventos y Disponibilidad
-Almacena los eventos y la cantidad disponible de tickets (se actualiza después de cada compra).
-
-#### 5. `scanAudits` - Registro de Auditoría (🆕)
-Registra todas las validaciones de tickets para seguridad y análisis.
-
-**Estructura:**
-```javascript
-{
-  id: "AUD-1728043200000-A1B2C3",
-  ticketCode: "TKT-XXXXX-XXXX",
-  operator: "operador1",
-  success: true,
-  timestamp: 1728043200000,
-  datetime: "2025-10-04T12:30:00.000Z",
-  deviceFingerprint: {
-    userAgent: "Mozilla/5.0...",
-    platform: "Win32",
-    language: "es-ES",
-    screenResolution: "1920x1080"
-  },
-  details: {
-    message: "✅ Ticket válido - Acceso autorizado",
-    ticketInfo: { /* datos del ticket */ },
-    fraudDetected: false,
-    validationType: "qr" // o "manual"
-  }
-}
-```
-
-#### 6. `recentScans` - Escaneos Recientes (🆕)
-Caché de escaneos de los últimos 5 minutos para detectar duplicados.
-
-**Estructura:**
-```javascript
-{
-  code: "TKT-XXXXX-XXXX",
-  operator: "operador1",
-  timestamp: 1728043200000
-}
-```
-
----
-
-## 🔒 Sistema de Seguridad Mejorado
-
-### Servicios de Seguridad
-
-#### `qrSecurityService.js` - Seguridad de Códigos QR
-
-**Funciones principales:**
-- `generateSecureCode()` - Genera códigos QR con checksum (formato: TKT-XXXXX-XXXX)
-- `validateFormat(code)` - Valida el formato del código QR
-- `verifyChecksum(code)` - Verifica integridad del código
-- `checkRecentScans(code)` - Detecta escaneos duplicados en 5 minutos
-- `validateIntegrity(ticketData)` - Valida que el ticket no haya sido alterado
-- `detectSuspiciousActivity(code, operator)` - Detecta patrones sospechosos
-- `encryptData()` / `decryptData()` - Encriptación simple de datos
-- `generateSessionToken(operatorId)` - Tokens de sesión seguros
-
-#### `auditService.js` - Auditoría y Análisis
-
-**Funciones principales:**
-- `logValidation(ticketCode, operator, success, details)` - Registra cada validación
-- `getAuditHistory(filters)` - Obtiene historial con filtros
-- `getStatistics(operator)` - Estadísticas de validaciones
-- `getSuspiciousActivity()` - Reportes de actividad sospechosa
-- `getOperatorMetrics(operator)` - Métricas de rendimiento por operador
-- `exportToCSV()` - Exporta auditorías a CSV
-- `cleanOldAudits()` - Limpia registros antiguos (>30 días)
-
-### Validación de Códigos QR
-
-El sistema ahora incluye múltiples capas de validación:
-
-1. **Sanitización** - Limpieza de entrada del usuario
-2. **Validación de formato** - Verifica patrón TKT-XXXXX-XXXX
-3. **Verificación de checksum** - Detecta códigos alterados
-4. **Control de duplicados** - Previene escaneos múltiples
-5. **Búsqueda en base de datos** - Verifica existencia del ticket
-6. **Validación de integridad** - Verifica fechas y datos coherentes
-7. **Verificación de uso** - Comprueba si ya fue utilizado
-8. **Registro de auditoría** - Guarda log de la operación
-
-### Detección de Fraudes
-
-El sistema detecta automáticamente:
-- ❌ Códigos QR falsificados (checksum inválido)
-- ❌ Intentos de reutilización (escaneos duplicados)
-- ❌ Tickets con fechas incoherentes
-- ❌ Múltiples intentos fallidos
-- ❌ Códigos alterados manualmente
-
-### Feedback Mejorado
-
-**Visual:**
-- ✅ Verde para validaciones exitosas
-- ❌ Rojo para errores
-- 🚨 Rojo parpadeante para fraudes
-
-**Sonoro:**
-- 🔊 Sonido de éxito (beep corto)
-- 🔊 Sonido de error (beep largo)
-
-**Táctil:**
-- 📳 Vibración corta (100ms) para éxito
-- 📳 Vibración doble (200ms-100ms-200ms) para error
-- 📳 Vibración múltiple para fraudes
-
----
-
-## 🏗️ Estructura del Proyecto
-
-```
-📦 ingenieriaSoftware-Boleteria/
-├── 📄 index.html            # HTML principal (punto de entrada Vite)
-├── 📄 operador.html         # Vista HTML del operador (referencia legacy)
-├── 📄 package.json          # Dependencias del proyecto
-├── ⚙️ vite.config.js        # Configuración de Vite
-└── 📁 src/                 # Código fuente organizado
-    ├── 📁 components/      # Componentes reutilizables
-    │   ├── NavBar.vue
-    │   ├── ProgressIndicator.vue
-    │   ├── EventCard.vue
-    │   └── TicketCard.vue
-    ├── 📁 views/           # Páginas principales
-    │   ├── EventList.vue
-    │   ├── TicketSelection.vue
-    │   ├── PersonalData.vue
-    │   ├── Confirmation.vue
-    │   ├── OperatorLogin.vue      # 🆕 Login de operador
-    │   └── OperatorPanel.vue      # 🆕 Panel de control
-    ├── 📁 stores/          # Estado global (Pinia)
-    │   ├── ticketStore.js         # 🔄 Actualizado con localStorage
-    │   └── authStore.js           # 🆕 Autenticación de operadores
-    ├── 📁 services/        # APIs y servicios
-    │   ├── apiService.js
-    │   └── qrService.js
-    ├── 📁 composables/     # Funciones reutilizables
-    │   ├── useFormFormatting.js
-    │   └── useQRGenerator.js
-    ├── 📁 router/          # Configuración de rutas
-    │   └── index.js               # 🔄 Con guards de autenticación
-    ├── 📁 utils/           # Utilidades
-    │   └── sampleData.js          # 🆕 Datos de ejemplo
-    ├── 📁 assets/          # Recursos estáticos
-    │   └── styles.css
-    ├── App.vue             # Componente principal
-    └── main.js             # Punto de entrada JavaScript
-```
-
----
-
-## 🧪 Comandos de Consola Útiles
-
-Abre la consola del navegador (F12) para ejecutar estos comandos:
-
-### Ver Datos Almacenados
-
-```javascript
-// Ver todos los tickets
-console.table(JSON.parse(localStorage.getItem('purchasedTickets') || '[]'))
-
-// Ver operadores
-console.table(JSON.parse(localStorage.getItem('operators') || '[]'))
-
-// Ver sesión actual
-console.log(JSON.parse(localStorage.getItem('operatorSession')))
-```
-
-### Gestionar Tickets
-
-```javascript
-// Agregar ticket de prueba
-const tickets = JSON.parse(localStorage.getItem('purchasedTickets') || '[]')
-tickets.push({
-  codigo: "TKT-99999999",
-  rut: "11.111.111-1",
-  nombre: "Usuario de Prueba",
-  email: "prueba@test.com",
-  telefono: "+56900000000",
-  evento: "Evento de Prueba",
-  tipo: "General",
-  precio: 50,
-  fecha: "31 de Diciembre, 2025",
-  ubicacion: "Lugar de Prueba",
-  usado: false,
-  fechaCompra: new Date().toISOString()
-})
-localStorage.setItem('purchasedTickets', JSON.stringify(tickets))
-console.log('✅ Ticket de prueba agregado!')
-
-// Resetear tickets usados
-const tickets = JSON.parse(localStorage.getItem('purchasedTickets') || '[]')
-tickets.forEach(t => {
-  t.usado = false
-  delete t.fechaUso
-})
-localStorage.setItem('purchasedTickets', JSON.stringify(tickets))
-console.log('♻️ Todos los tickets reseteados!')
-
-// Limpiar todo
-localStorage.clear()
-console.log('🗑️ localStorage limpiado completamente')
-```
-
-### Estadísticas
-
-```javascript
-// Obtener estadísticas de tickets
-function getTicketStats() {
-  const tickets = JSON.parse(localStorage.getItem('purchasedTickets') || '[]')
-  return {
-    total: tickets.length,
-    usados: tickets.filter(t => t.usado).length,
-    disponibles: tickets.filter(t => !t.usado).length
-  }
-}
-
-console.log(getTicketStats())
-```
-
----
-
-## 🎮 Guía de Prueba Completa
-
-### Escenario 1: Compra y Validación Exitosa
-
-1. **Como Cliente:**
-   - Ve a `http://localhost:3003/`
-   - Selecciona "Concierto Rock en Vivo"
-   - Elige "Entrada VIP"
-   - Completa datos personales (anota el RUT usado)
-   - Procesa el pago
-   - **Anota el código generado** (ej: `TKT-12345678`)
-
-2. **Como Operador:**
-   - Ve a `http://localhost:3003/operator/login`
-   - Login: `operador1` / `admin123`
-   - Ingresa el código del ticket
-   - Click en "Validar"
-   - ✅ Verás "Acceso autorizado" con datos del asistente
-
-3. **Intentar validar de nuevo:**
-   - Ingresa el mismo código
-   - ❌ Verás "Ticket ya utilizado"
-
-### Escenario 2: Validación por RUT
-
-1. Usa el RUT del ticket comprado
-2. Ingresa sin formato: `123456789`
-3. El sistema lo encontrará igual
-4. ✅ Validación exitosa
-
-### Escenario 3: Ticket No Encontrado
-
-1. Ingresa código inventado: `TKT-00000000`
-2. ❌ Sistema muestra "Ticket no encontrado"
-
----
-
-## 🔧 Inspeccionar localStorage en DevTools
-
-### Chrome/Edge
-1. Presiona `F12`
-2. Ve a **Application** → **Storage** → **Local Storage**
-3. Selecciona tu dominio
-4. Verás las claves: `purchasedTickets`, `operators`, `operatorSession`
-
-### Firefox
-1. Presiona `F12`
-2. Ve a **Storage** → **Local Storage**
-3. Verás las mismas claves
-
----
-
-## 🛠️ Tecnologías Utilizadas
-
-- **Vue.js 3** - Framework progresivo
-- **Vue Router 4** - Enrutamiento oficial
-- **Pinia** - Estado global moderno
-- **QRCode.js** - Generación de códigos QR
-- **Bootstrap 5** - Framework CSS
-- **Font Awesome** - Iconos
-- **Vite** - Build tool moderno (opcional)
-
----
-
-## 🎨 Componentes y Servicios
-
-### Componentes Vue
-- **NavBar.vue** - Barra de navegación principal
-- **ProgressIndicator.vue** - Indicador de progreso del proceso de compra
-- **EventCard.vue** - Tarjeta individual de evento
-- **TicketCard.vue** - Tarjeta de tipo de entrada
-- **HomeButton.vue** - Botón de navegación rápida a la página principal (nuevo) 📖 [Ver guía completa](./HOME_BUTTON_GUIDE.md)
-
-### Vistas
-**Cliente:**
-- **EventList.vue** - Lista de eventos disponibles
-- **TicketSelection.vue** - Selección de tipo de entrada
-- **PersonalData.vue** - Formulario de datos personales y pago
-- **Confirmation.vue** - Confirmación con código QR
-
-**Operador:**
-- **OperatorLogin.vue** - Formulario de autenticación
-- **OperatorPanel.vue** - Panel de control y validación
-
-### Stores (Pinia)
-- **ticketStore.js** - Gestión de tickets y proceso de compra
-- **authStore.js** - Autenticación y sesiones de operadores
-
-### Servicios
-- **qrService.js** - Generación y manejo de códigos QR
-- **apiService.js** - Simulación de APIs de eventos y pagos
-
-### Composables
-- **useFormFormatting.js** - Formateo de campos de formulario
-- **useQRGenerator.js** - Generación de códigos QR
-
----
-
-## 🔄 Flujo de Usuario Completo
-
-### Para Clientes
-1. **Seleccionar Evento** → El usuario ve la lista de eventos disponibles
-2. **Elegir Entrada** → Selecciona el tipo de entrada y precio
-3. **Datos Personales** → Completa información personal y de pago
-4. **Confirmación** → Recibe el código QR único para el evento
-5. **Almacenamiento** → El ticket se guarda automáticamente en localStorage
-
-### Para Operadores
-1. **Login** → Accede a `/operator/login` con credenciales
-2. **Dashboard** → Ve estadísticas de tickets (total, usados, disponibles)
-3. **Validación** → Escanea QR o ingresa código/RUT manualmente
-4. **Verificación** → Sistema valida el ticket y muestra datos del asistente
-5. **Confirmación** → Ticket se marca como usado en localStorage
-
----
-
-## 📱 Características Técnicas
-
-- **Responsive Design** - Optimizado para mobile y desktop
-- **Progressive Enhancement** - Funciona sin JavaScript básico
-- **Estado Reactivo** - Actualizaciones en tiempo real
-- **Validación de Formularios** - Campos requeridos y formatos
-- **Navegación SPA** - Sin recargas de página
-- **Código QR Dinámico** - Generado con datos únicos del usuario
-
----
-
-## 🎯 Cumplimiento de Requisitos
-
-### Historia de Usuario 1 (Cliente)
-✅ **Compra rápida**: Proceso completado en menos de 2 minutos  
-✅ **Código QR único**: Generado con datos del evento y comprador  
-✅ **Datos personales**: Integrados en el código QR  
-✅ **Interfaz intuitiva**: Navegación clara y progreso visible  
-✅ **Arquitectura moderna**: Código modular y mantenible
-
-### Historia de Usuario 3 (Operador)
-✅ **Escaneo QR**: Implementado con acceso a cámara (simulado)  
-✅ **Validación de identidad**: Por código de ticket o RUT  
-✅ **Confirmación de ingreso**: Marca tickets como usados  
-✅ **Interfaz para tablet**: Diseño responsive optimizado  
-✅ **Control de duplicados**: Evita uso múltiple de tickets
-
----
-
-## � Próximos Pasos Sugeridos
-
-- [ ] Implementar librería real de escaneo QR (jsQR, html5-qrcode)
-- [ ] Backend con base de datos real (PostgreSQL, MongoDB)
-- [ ] Sistema de reportes para operadores
-- [ ] Autenticación JWT
-- [ ] Panel de administración
-- [ ] Logs de acceso y auditoría
-
----
-
-## 📝 Notas de Seguridad
-
-⚠️ **Este sistema con localStorage es ideal para desarrollo y demos**, pero para producción se recomienda:
-
-1. **NO almacenar contraseñas en texto plano** - Usar hash (bcrypt)
-2. **Usar tokens JWT** para sesiones
-3. **Implementar backend** con base de datos real
-4. **Encriptar datos sensibles**
-5. **Validaciones del lado del servidor**
-
----
-
-**¡Sistema completo y funcionando!** 🎉
+**Versión:** 2.0.0  
+**Última actualización:** Octubre 2025

@@ -31,6 +31,27 @@
                 <p><strong>Precio Total:</strong> ${{ totalAmount }}</p>
                 
                 <hr>
+                
+                <h5 class="mb-3">Detalles del Pago</h5>
+                <div v-if="paymentResult">
+                  <p><strong>ID Transacción:</strong> <code>{{ paymentResult.transactionId }}</code></p>
+                  <p><strong>Código Autorización:</strong> <code>{{ paymentResult.authCode }}</code></p>
+                  <p><strong>Método de Pago:</strong> 
+                    <span class="badge bg-primary">
+                      <i :class="getCardIcon(paymentResult.cardType)"></i>
+                      {{ getCardName(paymentResult.cardType) }} **** {{ paymentResult.cardLast4 }}
+                    </span>
+                  </p>
+                  <p><strong>Monto Cobrado:</strong> ${{ paymentResult.amount.toFixed(2) }}</p>
+                  <p><strong>Estado:</strong> 
+                    <span class="badge bg-success">
+                      <i class="fas fa-check-circle"></i> Aprobado
+                    </span>
+                  </p>
+                </div>
+                
+                <hr>
+                
                 <h5 class="mb-3">Datos del Comprador</h5>
                 <p><strong>Nombre:</strong> {{ personalData.firstName }} {{ personalData.lastName }}</p>
                 <p><strong>Email:</strong> {{ personalData.email }}</p>
@@ -91,13 +112,36 @@ export default {
       personalData, 
       ticketCode,
       ticketQuantity,
-      totalAmount
+      totalAmount,
+      paymentResult
     } = storeToRefs(store)
 
     // Verificar que llegamos aquí correctamente
     if (!selectedEvent.value || !selectedTicket.value || !ticketCode.value) {
       router.push('/')
       return
+    }
+
+    const getCardName = (cardType) => {
+      const names = {
+        'visa': 'Visa',
+        'mastercard': 'Mastercard',
+        'amex': 'American Express',
+        'discover': 'Discover',
+        'unknown': 'Tarjeta'
+      }
+      return names[cardType] || 'Tarjeta'
+    }
+
+    const getCardIcon = (cardType) => {
+      const icons = {
+        'visa': 'fab fa-cc-visa',
+        'mastercard': 'fab fa-cc-mastercard',
+        'amex': 'fab fa-cc-amex',
+        'discover': 'fab fa-cc-discover',
+        'unknown': 'fas fa-credit-card'
+      }
+      return icons[cardType] || 'fas fa-credit-card'
     }
 
     const downloadTicket = () => {
@@ -238,7 +282,7 @@ export default {
         formData.append('pdf', pdfBlob, `Entrada-${ticketCode.value}.pdf`)
         
         // URL del backend - ajusta según tu configuración
-        const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+        const backendUrl = import.meta.env.VITE_API_URL || ''
         
         const response = await fetch(`${backendUrl}/api/send-ticket-email`, {
           method: 'POST',
@@ -301,6 +345,9 @@ export default {
       ticketCode,
       ticketQuantity,
       totalAmount,
+      paymentResult,
+      getCardName,
+      getCardIcon,
       downloadTicket,
       sendTicketByEmail,
       startOver

@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import multer from 'multer';
 import { connectDB } from './src/config/database.js';
 import { sendTicketEmail } from './src/services/emailService.js';
+import logger from './src/utils/logger.js';
+import seedDatabase from './src/config/seed.js';
 
 // Importar modelos para inicializar asociaciones
 import './src/models/index.js';
@@ -35,6 +37,11 @@ app.get('/', (req, res) => {
     message: 'TicketVue API - Sistema de Boletería',
     version: '1.0.0'
   });
+});
+
+// Ruta de health check simple
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK' });
 });
 
 // Ruta de prueba para verificar configuración de email
@@ -127,21 +134,34 @@ const PORT = process.env.PORT || 3000;
 // Iniciar servidor
 const startServer = async () => {
   try {
+    logger.info('SERVER', 'Iniciando servidor...');
+    
     // Intentar conectar a la base de datos (opcional para email)
     try {
       await connectDB();
+      logger.success('DATABASE', 'Conexión a base de datos establecida');
+      
+      // Ejecutar seed para crear usuarios predeterminados
+      logger.info('DATABASE', 'Verificando usuarios predeterminados...');
+      await seedDatabase();
+      logger.success('DATABASE', 'Verificación de usuarios completada');
     } catch (dbError) {
-      console.warn('⚠️  Base de datos no disponible, pero el servidor continuará');
-      console.warn('   La funcionalidad de email seguirá funcionando');
+      logger.warn('DATABASE', 'Base de datos no disponible, pero el servidor continuará');
+      logger.warn('DATABASE', 'La funcionalidad de email seguirá funcionando');
     }
     
     // Iniciar servidor
     app.listen(PORT, () => {
+      logger.success('SERVER', `Servidor corriendo en puerto ${PORT}`);
+      logger.info('SERVER', `Modo: ${process.env.NODE_ENV || 'development'}`);
+      logger.info('SERVER', `Endpoint de email disponible en: http://localhost:${PORT}/api/send-ticket-email`);
+      
       console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
       console.log(`📍 Modo: ${process.env.NODE_ENV || 'development'}`);
       console.log(`📧 Endpoint de email disponible en: http://localhost:${PORT}/api/send-ticket-email`);
     });
   } catch (error) {
+    logger.error('SERVER', 'Error fatal al iniciar servidor', error);
     console.error('❌ Error al iniciar servidor:', error);
     process.exit(1);
   }

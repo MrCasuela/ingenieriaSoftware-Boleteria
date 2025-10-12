@@ -257,7 +257,7 @@ export const loginUser = async (req, res) => {
     
     // Verificar que el usuario esté activo
     if (!user.isActive) {
-      console.log('⚠️ Usuario inactivo:', email);
+      console.log('⚠️ Usuario inactivo:', `"${(email || "").replace(/[\n\r]/g, "")}"`);
       return res.status(403).json({
         success: false,
         message: 'Usuario inactivo'

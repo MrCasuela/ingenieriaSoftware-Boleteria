@@ -12,7 +12,7 @@
 
     <!-- Contenido del panel (solo si está autenticado) -->
     <template v-else>
-      <HomeButton position="top-left" />
+      <HomeButton position="bottom-right" />
       <!-- Header -->
       <div class="operator-header">
       <div class="header-content">

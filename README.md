@@ -303,6 +303,29 @@ Proyecto de código abierto - Licencia MIT
 
 Equipo de Desarrollo - Ingeniería de Software
 
+## Sprint 1
+Benjamín Vivanco:
+- Creacion del BackEnd
+- Vista de operador.
+- Estructura de facilitaroes visuales.
+- Desarallo de la vista completa, a través de framework View.
+- Uso de JavaScript.
+
+Pablo Sepulveda:
+- Creacion Backend
+- Integrar base de datos.
+- Integrar Docker
+- Utilizo Api Node.js
+- Utilizo Api EndPoints
+
+Fernando Salazar:
+- 
+
+Javier Cancino:
+- Creacion Jira
+- Ajustes de Historias de usaurio
+- Ajuste SubTares.
+
 ---
 
 **Versión:** 2.0.0  

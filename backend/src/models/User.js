@@ -1,5 +1,4 @@
 import { DataTypes, Model } from 'sequelize';
-import bcrypt from 'bcryptjs';
 import sequelize from '../config/database.js';
 
 /**
@@ -7,13 +6,6 @@ import sequelize from '../config/database.js';
  * Esta es la clase padre de la cual heredan Cliente, Operador y Administrador
  */
 class User extends Model {
-  /**
-   * Método para comparar passwords
-   */
-  async comparePassword(candidatePassword) {
-    return await bcrypt.compare(candidatePassword, this.password);
-  }
-
   /**
    * Método para obtener datos públicos del usuario
    */
@@ -100,21 +92,7 @@ User.init(
     modelName: 'User',
     tableName: 'users',
     timestamps: true,
-    underscored: true,
-    hooks: {
-      beforeCreate: async (user) => {
-        if (user.password) {
-          const salt = await bcrypt.genSalt(10);
-          user.password = await bcrypt.hash(user.password, salt);
-        }
-      },
-      beforeUpdate: async (user) => {
-        if (user.changed('password')) {
-          const salt = await bcrypt.genSalt(10);
-          user.password = await bcrypt.hash(user.password, salt);
-        }
-      }
-    }
+    underscored: true
   }
 );
 

@@ -1,5 +1,4 @@
 import User from '../models/User.js';
-import bcrypt from 'bcryptjs';
 
 /**
  * Obtener todos los usuarios
@@ -240,8 +239,8 @@ export const loginUser = async (req, res) => {
       });
     }
     
-    // Verificar contraseña
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    // Verificar contraseña (comparación directa sin hash)
+    const isValidPassword = password === user.password;
     
     if (!isValidPassword) {
       console.log('❌ Contraseña inválida para:', email);

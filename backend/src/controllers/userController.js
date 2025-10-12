@@ -247,7 +247,7 @@ export const loginUser = async (req, res) => {
     const isValidPassword = password === user.password;
     
     if (!isValidPassword) {
-      console.log('❌ Contraseña inválida para:', email);
+      console.log('❌ Contraseña inválida para:', `"${(email || "").replace(/[\n\r]/g, "")}"`);
       return res.status(401).json({
         success: false,
         message: 'Credenciales inválidas'

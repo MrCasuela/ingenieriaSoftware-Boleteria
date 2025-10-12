@@ -264,7 +264,7 @@ export const loginUser = async (req, res) => {
       });
     }
     
-    console.log('✅ Login exitoso:', email);
+    console.log('✅ Login exitoso:', `"${(email || "").replace(/[\n\r]/g, "")}"`);
     
     // No devolver la contraseña
     const userResponse = user.toJSON();

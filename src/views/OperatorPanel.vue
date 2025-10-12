@@ -71,8 +71,8 @@
               </div>
               <div class="scan-progress">
                 <div class="progress-info">
-                  <span>🔍 Intento {{ scanAttempts }}/10</span>
-                  <span style="margin-left: 15px;">⏰ {{ remainingTime }}s restantes</span>
+                  <span>⏰ {{ remainingTime }}s restantes</span>
+                  <span v-if="qrDetected" style="margin-left: 15px;">✅ QR detectado</span>
                 </div>
               </div>
             </div>
@@ -81,27 +81,49 @@
 
         <!-- Sección de Entrada Manual -->
         <div class="manual-section">
-          <div class="manual-title">Ingreso Manual de Código</div>
-          <div class="input-group">
-            <input 
-              v-model="manualInput" 
-              type="text" 
-              placeholder="Ingrese código del ticket..." 
-              class="manual-input"
-              @keyup.enter="validateManual"
-            >
-            <button @click="validateManual" class="validate-btn">
-              🔍 Validar
-            </button>
+          <div class="manual-title">Ingreso Manual por Código o RUT</div>
+          
+          <!-- Opción 1: Por Código de Ticket -->
+          <div class="validation-option">
+            <h4 class="option-title">📋 Opción 1: Validar por Código</h4>
+            <div class="input-group">
+              <input 
+                v-model="manualInput" 
+                type="text" 
+                placeholder="Ingrese código del ticket (TKT-XXXXX)..." 
+                class="manual-input"
+                @keyup.enter="validateManual"
+              >
+              <button @click="validateManual" class="validate-btn">
+                🔍 Validar
+              </button>
+            </div>
+          </div>
+
+          <!-- Opción 2: Por RUT del Usuario -->
+          <div class="validation-option">
+            <h4 class="option-title">👤 Opción 2: Validar por RUT</h4>
+            <div class="input-group">
+              <input 
+                v-model="rutInput" 
+                type="text" 
+                placeholder="Ingrese RUT del usuario (12345678-9)..." 
+                class="manual-input"
+                @keyup.enter="validateByRut"
+              >
+              <button @click="validateByRut" class="validate-btn-rut">
+                👤 Buscar Tickets
+              </button>
+            </div>
           </div>
           
           <div class="instructions">
             <p><strong>💡 Instrucciones:</strong></p>
             <ul>
-              <li>Use el escaneo QR para validación automática</li>
-              <li>Si el código QR no funciona, ingrese manualmente el código</li>
-              <li>Los códigos válidos tienen el formato: TKT-XXXXX</li>
-              <li>El sistema verificará automáticamente si el ticket ya fue usado</li>
+              <li>Use el escaneo QR presionando ENTER/ESPACIO cuando muestre el código</li>
+              <li>Si el QR no funciona, ingrese el código del ticket manualmente</li>
+              <li>Si el QR está dañado, ingrese el RUT del usuario para buscar sus tickets</li>
+              <li>El sistema verificará en la base de datos si el usuario tiene tickets válidos</li>
             </ul>
           </div>
         </div>
@@ -205,6 +227,7 @@ export default {
     const isScanning = ref(false)
     const stream = ref(null)
     const manualInput = ref('')
+    const rutInput = ref('')
     const showModal = ref(false)
     const validationResult = ref({
       success: false,
@@ -227,14 +250,10 @@ export default {
       if (!isScanning.value) return ''
       
       if (qrDetected.value) {
-        return '✅ Código QR detectado! Procesando...'
+        return '✅ Código QR detectado! Validando...'
       }
       
-      if (scanAttempts.value === 0) {
-        return 'Iniciando escaneo... Apunte el código QR hacia la cámara'
-      }
-      
-      return '🔍 Buscando código QR... Mantenga el código visible y estable'
+      return '📸 Esperando código QR... Presione ENTER o ESPACIO cuando lo muestre'
     })
     
     const updateRemainingTime = () => {
@@ -250,40 +269,24 @@ export default {
     }
 
     const startQRDetection = () => {
-      if (!isScanning.value) return
+      if (!isScanning.value || qrDetected.value) return
       
       scanAttempts.value++
       console.log(`🔍 Intento de detección QR ${scanAttempts.value}/10`)
       
-      // Simular detección con probabilidad creciente
-      const baseChance = 0.1 // 10% base
-      const attemptBonus = scanAttempts.value * 0.05 // +5% por intento
-      const detectionChance = Math.min(baseChance + attemptBonus, 0.7) // Máximo 70%
-      
-      if (Math.random() < detectionChance) {
-        console.log('✅ Código QR detectado!')
-        qrDetected.value = true
-        
-        // Simular procesamiento
-        setTimeout(() => {
-          if (isScanning.value) {
-            simulateQRDetection()
-          }
-        }, 1000)
-      } else if (scanAttempts.value >= 10) {
-        console.log('❌ Máximo de intentos alcanzado')
-        stopScanning()
-        showResult('❌ Escaneo Fallido', 'No se pudo detectar un código QR después de múltiples intentos. Use ingreso manual.', false)
-      }
+      // Aquí simplemente esperamos a que el usuario presente el QR
+      // No validamos automáticamente sin que se haya presentado algo
+      // La detección ocurrirá solo cuando realmente se detecte un código
     }
 
     const simulateQRDetection = () => {
+      // Esta función solo se llamará cuando realmente se detecte un QR
       const scenarios = [
         { weight: 50, type: 'valid' },
         { weight: 30, type: 'used' },
         { weight: 10, type: 'invalid' },
         { weight: 5, type: 'corrupted' },
-        { weight: 5, type: 'fraud' } // Nuevo: intento de fraude
+        { weight: 5, type: 'fraud' }
       ]
       
       const random = Math.random() * 100
@@ -422,9 +425,9 @@ export default {
           break
           
         case 'fraud':
-          ticketCode = 'TKT-FAKE1-XXXX' // Código falsificado
+          ticketCode = 'TKT-FAKE1-XXXX'
           playErrorSound()
-          vibrateDevice([200, 100, 200, 100, 200]) // Vibración más intensa
+          vibrateDevice([200, 100, 200, 100, 200])
           
           AuditService.logValidation(
             ticketCode,
@@ -462,23 +465,54 @@ export default {
           if (videoElement.value) {
             videoElement.value.srcObject = stream.value
           }
-          console.log('📷 Cámara activada')
+          console.log('📷 Cámara activada - Esperando que presente el código QR...')
         } catch (cameraErr) {
           console.log('⚠️ No se pudo acceder a la cámara, continuando con simulación')
         }
         
         // Countdown timer
-        const countdownInterval = setInterval(updateRemainingTime, 1000)
+        const countdownInterval = setInterval(() => {
+          if (!isScanning.value) {
+            clearInterval(countdownInterval)
+            return
+          }
+          
+          updateRemainingTime()
+        }, 1000)
         
-        // QR detection simulation
-        const detectionInterval = setInterval(startQRDetection, 1500)
+        // Listener para detectar cuando el usuario PRESENTA el QR
+        // Solo procesa cuando presiona ENTER o ESPACIO (simula mostrar el QR físicamente)
+        const handleKeyPress = (e) => {
+          if ((e.key === 'Enter' || e.key === ' ') && isScanning.value && !qrDetected.value) {
+            console.log('✅ Usuario presentó código QR - Iniciando validación...')
+            qrDetected.value = true
+            clearInterval(countdownInterval)
+            document.removeEventListener('keydown', handleKeyPress)
+            
+            // Pequeña pausa para mostrar "QR detectado"
+            setTimeout(() => {
+              if (isScanning.value) {
+                simulateQRDetection()
+              }
+            }, 500)
+          }
+        }
         
+        document.addEventListener('keydown', handleKeyPress)
+        
+        // Timeout principal - SOLO muestra mensaje si NO se presentó ningún QR
         scanTimeout.value = setTimeout(() => {
           clearInterval(countdownInterval)
-          clearInterval(detectionInterval)
+          document.removeEventListener('keydown', handleKeyPress)
+          
           if (isScanning.value && !qrDetected.value) {
+            console.log('⏰ Tiempo de escaneo agotado - NO se presentó código QR')
             stopScanning()
-            showResult('⏰ Tiempo Agotado', 'Tiempo de escaneo agotado. Intente nuevamente.', false)
+            showResult(
+              '⏰ Tiempo de Escaneo Expirado', 
+              'No se presentó ningún código QR en el tiempo establecido. Por favor, muestre el código QR ante la cámara (presione ENTER o ESPACIO) o use el ingreso manual.', 
+              false
+            )
           }
         }, maxScanTime)
         
@@ -572,6 +606,121 @@ export default {
       )
     }
 
+    const validateByRut = async () => {
+      const rut = rutInput.value.trim()
+      
+      if (!rut) {
+        showResult('❌ RUT Requerido', 'Por favor ingrese el RUT del usuario.', false)
+        return
+      }
+      
+      console.log(`👤 Buscando tickets por RUT: ${rut}`)
+      
+      try {
+        // Buscar tickets del usuario en la base de datos
+        const response = await fetch(`/api/tickets/by-rut/${encodeURIComponent(rut)}`)
+        
+        if (!response.ok) {
+          throw new Error('Error al buscar tickets')
+        }
+        
+        const data = await response.json()
+        
+        if (!data.success || !data.tickets || data.tickets.length === 0) {
+          playErrorSound()
+          vibrateDevice([200, 100, 200])
+          
+          AuditService.logValidation(
+            `RUT-${rut}`,
+            authStore.userName,
+            false,
+            {
+              message: 'No se encontraron tickets para este RUT',
+              fraudDetected: false,
+              validationType: 'rut'
+            }
+          )
+          
+          showResult(
+            '❌ Sin Tickets',
+            `No se encontraron tickets para el RUT ${rut}. Verifique el RUT ingresado.`,
+            false
+          )
+          return
+        }
+        
+        // Filtrar solo tickets no usados
+        const availableTickets = data.tickets.filter(t => !t.usado)
+        
+        if (availableTickets.length === 0) {
+          playErrorSound()
+          vibrateDevice([200, 100, 200])
+          
+          showResult(
+            '⚠️ Tickets Ya Utilizados',
+            `Se encontraron ${data.tickets.length} ticket(s) para el RUT ${rut}, pero todos ya fueron utilizados.`,
+            false
+          )
+          return
+        }
+        
+        // Si hay tickets disponibles, usar el primero
+        const ticket = availableTickets[0]
+        
+        // Validar el ticket encontrado
+        const validationResult = ticketStore.validateTicket(ticket.codigo, authStore.userName)
+        
+        if (validationResult.valid) {
+          // Marcar ticket como usado
+          ticketStore.markTicketAsUsed(ticket.codigo)
+          rutInput.value = ''
+          
+          playSuccessSound()
+          vibrateDevice([100])
+          
+          AuditService.logValidation(
+            ticket.codigo,
+            authStore.userName,
+            true,
+            {
+              message: `Ticket validado por RUT: ${rut}`,
+              ticketInfo: ticket,
+              fraudDetected: false,
+              validationType: 'rut'
+            }
+          )
+          
+          showResult(
+            '✅ Ticket Válido (Por RUT)',
+            `Se encontró y validó ticket para el RUT ${rut}. ${availableTickets.length > 1 ? `Quedan ${availableTickets.length - 1} ticket(s) disponible(s).` : ''}`,
+            true,
+            ticket
+          )
+        } else {
+          playErrorSound()
+          vibrateDevice([200, 100, 200])
+          
+          showResult(
+            '❌ Error de Validación',
+            validationResult.message,
+            false,
+            ticket
+          )
+        }
+        
+      } catch (error) {
+        console.error('❌ Error al validar por RUT:', error)
+        playErrorSound()
+        vibrateDevice([200, 100, 200])
+        
+        showResult(
+          '❌ Error del Sistema',
+          'No se pudo conectar con la base de datos para verificar el RUT. Intente nuevamente o use validación por código.',
+          false
+        )
+      }
+    }
+
     // Funciones de feedback
     const playSuccessSound = () => {
       try {
@@ -653,6 +802,7 @@ export default {
       videoElement,
       isScanning,
       manualInput,
+      rutInput,
       showModal,
       validationResult,
       operatorName,
@@ -665,6 +815,7 @@ export default {
       startScanning,
       stopScanning,
       validateManual,
+      validateByRut,
       closeModal,
       closeModalOnBackdrop,
       handleLogout,
@@ -928,16 +1079,37 @@ export default {
 }
 
 .manual-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
   color: #333;
+}
+
+.validation-option {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 15px;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.validation-option:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.option-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 15px 0;
+  color: #495057;
 }
 
 .input-group {
   display: flex;
   gap: 10px;
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 .manual-input {
@@ -964,10 +1136,29 @@ export default {
   font-size: 14px;
   font-weight: 600;
   transition: all 0.3s ease;
+  white-space: nowrap;
 }
 
 .validate-btn:hover {
   background: #218838;
+  transform: translateY(-1px);
+}
+
+.validate-btn-rut {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.validate-btn-rut:hover {
+  background: #0056b3;
   transform: translateY(-1px);
 }
 
@@ -978,6 +1169,7 @@ export default {
   padding: 15px;
   color: #856404;
   font-size: 13px;
+  margin-top: 15px;
 }
 
 .instructions p {

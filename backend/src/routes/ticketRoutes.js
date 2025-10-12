@@ -3,6 +3,7 @@ import {
   getAllTickets,
   getTicketsByUser,
   getTicketByCode,
+  getTicketsByRut,
   createTicket,
   validateTicket,
   cancelTicket
@@ -14,6 +15,7 @@ const router = express.Router();
 router.get('/', getAllTickets);
 router.get('/user/:userId', getTicketsByUser);
 router.get('/code/:ticketCode', getTicketByCode);
+router.get('/by-rut/:rut', getTicketsByRut);
 router.post('/', createTicket);
 router.post('/validate/:ticketCode', validateTicket);
 router.put('/cancel/:id', cancelTicket);

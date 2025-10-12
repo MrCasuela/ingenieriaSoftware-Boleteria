@@ -77,6 +77,7 @@
 </template>
 
 <script>
+import { onMounted } from 'vue'
 import { useTicketStore } from '../stores/ticketStore.js'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
@@ -98,15 +99,25 @@ export default {
     const router = useRouter()
     const { selectedEvent, selectedTicket, ticketQuantity, subtotal } = storeToRefs(store)
 
-    // Si no hay evento seleccionado, buscarlo por ID
-    if (!selectedEvent.value) {
-      const event = store.getEventById(props.eventId)
-      if (event) {
-        store.selectEvent(event)
+    // Al montar, recargar el evento para obtener disponibilidad actualizada
+    onMounted(async () => {
+      // Si no hay evento seleccionado o es diferente, buscarlo
+      if (!selectedEvent.value || selectedEvent.value.id !== parseInt(props.eventId)) {
+        await store.loadEventsFromAPI()
+        const event = store.getEventById(props.eventId)
+        if (event) {
+          store.selectEvent(event)
+        } else {
+          router.push('/')
+        }
       } else {
-        router.push('/')
+        // Recargar los tickets del evento para obtener disponibilidad actualizada
+        const tickets = await store.loadTicketTypesForEvent(parseInt(props.eventId))
+        if (selectedEvent.value && tickets.length > 0) {
+          selectedEvent.value.tickets = tickets
+        }
       }
-    }
+    })
 
     const selectTicket = (ticket) => {
       store.selectTicket(ticket)

@@ -72,7 +72,6 @@ class Logger {
    */
   info(category, message, data = null) {
     const logMessage = this._formatMessage('INFO', category, message, data);
-    console.log(`ℹ️  ${logMessage.trim()}`);
     this._writeToFile(this.files.combined, logMessage);
     
     // Escribir en archivo específico si existe
@@ -86,7 +85,6 @@ class Logger {
    */
   success(category, message, data = null) {
     const logMessage = this._formatMessage('SUCCESS', category, message, data);
-    console.log(`✅ ${logMessage.trim()}`);
     this._writeToFile(this.files.combined, logMessage);
     
     if (this.files[category.toLowerCase()]) {
@@ -130,7 +128,6 @@ class Logger {
     }
     
     const logMessage = this._formatMessage('ERROR', category, message, errorData);
-    console.error(`❌ ${logMessage.trim()}`);
     
     // Siempre escribir en error.log
     this._writeToFile(this.files.error, logMessage);
@@ -147,7 +144,6 @@ class Logger {
   debug(category, message, data = null) {
     if (process.env.NODE_ENV !== 'production') {
       const logMessage = this._formatMessage('DEBUG', category, message, data);
-      console.log(`🔍 ${logMessage.trim()}`);
       this._writeToFile(this.files.combined, logMessage);
     }
   }
@@ -158,7 +154,6 @@ class Logger {
   http(method, url, statusCode, data = null) {
     const message = `${method} ${url} - Status: ${statusCode}`;
     const logMessage = this._formatMessage('HTTP', 'API', message, data);
-    console.log(`🌐 ${logMessage.trim()}`);
     this._writeToFile(this.files.combined, logMessage);
   }
 
@@ -167,7 +162,6 @@ class Logger {
    */
   database(operation, message, data = null) {
     const logMessage = this._formatMessage('DATABASE', operation, message, data);
-    console.log(`🗄️  ${logMessage.trim()}`);
     this._writeToFile(this.files.database, logMessage);
     this._writeToFile(this.files.combined, logMessage);
   }
@@ -186,7 +180,6 @@ class Logger {
         
         if (fileAge > maxAge) {
           fs.unlinkSync(filePath);
-          console.log(`🗑️  Log antiguo eliminado: ${path.basename(filePath)}`);
         }
       }
     });
@@ -207,7 +200,6 @@ class Logger {
           const backupPath = filePath.replace('.log', `-${timestamp}.log`);
           
           fs.renameSync(filePath, backupPath);
-          console.log(`📦 Log rotado: ${name} -> ${path.basename(backupPath)}`);
         }
       }
     });

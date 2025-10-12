@@ -14,116 +14,110 @@ const seedDatabase = async () => {
     // ===================================
     // USUARIOS
     // ===================================
-    console.log('👥 Configurando usuarios predeterminados...');
+    console.log('👥 Creando usuarios...');
     
-    // Eliminar usuarios existentes para recrearlos
-    await User.destroy({ where: {} });
-    console.log('  🗑️  Usuarios anteriores eliminados');
-    console.log('  📝 Creando usuarios predeterminados...\n');
-      
-      // Administradores
-      await User.create({
-        email: 'admin1@ticketvue.com',
-        password: 'admin123',
-        firstName: 'Carlos',
-        lastName: 'Administrador',
-        phone: '+54 11 1234-5678',
-        userType: 'Administrador',
-        employeeId: 'ADM001',
-        adminLevel: 'super',
-        permissions: JSON.stringify({
-          manage_events: true,
-          manage_users: true,
-          view_reports: true,
-          manage_tickets: true
-        }),
-        isActive: true
-      });
-      
-      await User.create({
-        email: 'admin2@ticketvue.com',
-        password: 'admin456',
-        firstName: 'María',
-        lastName: 'González',
-        phone: '+54 11 2345-6789',
-        userType: 'Administrador',
-        employeeId: 'ADM002',
-        adminLevel: 'moderador',
-        permissions: JSON.stringify({
-          manage_events: true,
-          manage_users: false,
-          view_reports: true,
-          manage_tickets: true
-        }),
-        isActive: true
-      });
-      
-      // Operadores
-      await User.create({
-        email: 'operador1@ticketvue.com',
-        password: 'oper123',
-        firstName: 'Juan',
-        lastName: 'Operador',
-        phone: '+54 11 3456-7890',
-        userType: 'Operador',
-        employeeId: 'OPR001',
-        shift: 'mañana',
-        totalValidations: 0,
-        isActive: true
-      });
-      
-      await User.create({
-        email: 'operador2@ticketvue.com',
-        password: 'oper456',
-        firstName: 'Ana',
-        lastName: 'Pérez',
-        phone: '+54 11 4567-8901',
-        userType: 'Operador',
-        employeeId: 'OPR002',
-        shift: 'tarde',
-        totalValidations: 0,
-        isActive: true
-      });
-      
-      // Clientes
-      await User.create({
-        email: 'cliente1@email.com',
-        password: 'cliente123',
-        firstName: 'Roberto',
-        lastName: 'Martínez',
-        phone: '+54 11 5678-9012',
-        document: '12345678',
-        userType: 'Cliente',
-        totalPurchases: 0,
-        totalSpent: 0.00,
-        preferences: JSON.stringify({
-          notifications: true,
-          newsletter: true,
-          favorite_genres: ['Rock', 'Pop']
-        }),
-        isActive: true
-      });
-      
-      await User.create({
-        email: 'cliente2@email.com',
-        password: 'cliente456',
-        firstName: 'Laura',
-        lastName: 'Rodríguez',
-        phone: '+54 11 6789-0123',
-        document: '87654321',
-        userType: 'Cliente',
-        totalPurchases: 0,
-        totalSpent: 0.00,
-        preferences: JSON.stringify({
-          notifications: true,
-          newsletter: false,
-          favorite_genres: ['Teatro', 'Musical']
-        }),
-        isActive: true
-      });
-      
-      console.log(`  ✅ Creados 6 usuarios (2 admins, 2 operadores, 2 clientes)`);
+    // Administradores
+    const admin1 = await User.create({
+      email: 'admin1@ticketvue.com',
+      password: await bcrypt.hash('admin123', 10),
+      firstName: 'Carlos',
+      lastName: 'Administrador',
+      phone: '+54 11 1234-5678',
+      userType: 'Administrador',
+      employeeId: 'ADM001',
+      adminLevel: 'super',
+      permissions: JSON.stringify({
+        manage_events: true,
+        manage_users: true,
+        view_reports: true,
+        manage_tickets: true
+      }),
+      isActive: true
+    });
     
+    const admin2 = await User.create({
+      email: 'admin2@ticketvue.com',
+      password: await bcrypt.hash('admin456', 10),
+      firstName: 'María',
+      lastName: 'González',
+      phone: '+54 11 2345-6789',
+      userType: 'Administrador',
+      employeeId: 'ADM002',
+      adminLevel: 'moderador',
+      permissions: JSON.stringify({
+        manage_events: true,
+        manage_users: false,
+        view_reports: true,
+        manage_tickets: true
+      }),
+      isActive: true
+    });
+    
+    // Operadores
+    const operator1 = await User.create({
+      email: 'operador1@ticketvue.com',
+      password: await bcrypt.hash('oper123', 10),
+      firstName: 'Juan',
+      lastName: 'Operador',
+      phone: '+54 11 3456-7890',
+      userType: 'Operador',
+      employeeId: 'OPR001',
+      shift: 'mañana',
+      totalValidations: 0,
+      isActive: true
+    });
+    
+    const operator2 = await User.create({
+      email: 'operador2@ticketvue.com',
+      password: await bcrypt.hash('oper456', 10),
+      firstName: 'Ana',
+      lastName: 'Pérez',
+      phone: '+54 11 4567-8901',
+      userType: 'Operador',
+      employeeId: 'OPR002',
+      shift: 'tarde',
+      totalValidations: 0,
+      isActive: true
+    });
+    
+    // Clientes
+    const client1 = await User.create({
+      email: 'cliente1@email.com',
+      password: await bcrypt.hash('cliente123', 10),
+      firstName: 'Roberto',
+      lastName: 'Martínez',
+      phone: '+54 11 5678-9012',
+      document: '12345678',
+      userType: 'Cliente',
+      totalPurchases: 0,
+      totalSpent: 0.00,
+      preferences: JSON.stringify({
+        notifications: true,
+        newsletter: true,
+        favorite_genres: ['Rock', 'Pop']
+      }),
+      isActive: true
+    });
+    
+    const client2 = await User.create({
+      email: 'cliente2@email.com',
+      password: await bcrypt.hash('cliente456', 10),
+      firstName: 'Laura',
+      lastName: 'Rodríguez',
+      phone: '+54 11 6789-0123',
+      document: '87654321',
+      userType: 'Cliente',
+      totalPurchases: 0,
+      totalSpent: 0.00,
+      preferences: JSON.stringify({
+        notifications: true,
+        newsletter: false,
+        favorite_genres: ['Teatro', 'Musical']
+      }),
+      isActive: true
+    });
+    
+    console.log(`  ✅ Creados ${await User.count()} usuarios`);
     console.log(`     - 2 Administradores`);
     console.log(`     - 2 Operadores`);
     console.log(`     - 2 Clientes\n`);
@@ -280,15 +274,8 @@ const seedDatabase = async () => {
     
   } catch (error) {
     console.error('❌ Error al hacer seed:', error);
-    throw error;
+    process.exit(1);
   }
 };
 
-// Si se ejecuta directamente desde la terminal
-if (import.meta.url === `file://${process.argv[1]}`) {
-  seedDatabase()
-    .then(() => process.exit(0))
-    .catch(() => process.exit(1));
-}
-
-export default seedDatabase;
+seedDatabase();

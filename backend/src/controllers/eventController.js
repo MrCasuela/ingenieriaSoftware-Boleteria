@@ -60,10 +60,18 @@ export const createEvent = async (req, res) => {
     const eventData = req.body;
     
     // Validar datos requeridos
-    if (!eventData.name || !eventData.date || !eventData.location) {
+    if (!eventData.name || !eventData.date || !eventData.location || !eventData.totalCapacity) {
       return res.status(400).json({
         success: false,
-        message: 'Faltan datos requeridos (name, date, location)'
+        message: 'Faltan datos requeridos (name, date, location, totalCapacity)'
+      });
+    }
+    
+    // Validar que totalCapacity sea un número positivo
+    if (eventData.totalCapacity <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'El aforo total debe ser mayor a 0'
       });
     }
     
@@ -76,6 +84,15 @@ export const createEvent = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al crear evento:', error);
+    
+    // Manejar error de nombre duplicado
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe un evento con ese nombre'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error al crear evento',
@@ -101,6 +118,14 @@ export const updateEvent = async (req, res) => {
       });
     }
     
+    // Validar totalCapacity si se proporciona
+    if (eventData.totalCapacity !== undefined && eventData.totalCapacity <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'El aforo total debe ser mayor a 0'
+      });
+    }
+    
     await event.update(eventData);
     
     res.json({
@@ -110,6 +135,15 @@ export const updateEvent = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al actualizar evento:', error);
+    
+    // Manejar error de nombre duplicado
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe un evento con ese nombre'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error al actualizar evento',

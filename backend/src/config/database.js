@@ -44,16 +44,15 @@ export const connectDB = async () => {
     await sequelize.authenticate();
     console.log('✅ MySQL Conectado exitosamente');
     
-    // Sincronizar modelos en desarrollo (cuidado en producción)
-    if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync({ alter: true });
-      console.log('✅ Modelos sincronizados con la base de datos');
-    }
+    // NO sincronizar modelos automáticamente - usar scripts SQL
+    // Esto previene conflictos entre el esquema SQL y los modelos de Sequelize
+    console.log('ℹ️  Usando esquema de base de datos desde archivos SQL');
     
   } catch (error) {
     console.error('❌ Error al conectar a MySQL:', error.message);
     console.log('⚠️  Continuando sin base de datos...');
     console.log('   (La funcionalidad de email funcionará sin base de datos)');
+    throw error; // Re-lanzar el error para que el seed lo maneje
   }
 };
 

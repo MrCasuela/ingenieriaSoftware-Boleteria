@@ -216,20 +216,30 @@ export const createTicket = async (req, res) => {
   try {
     const ticketData = req.body;
     
+    // Normalizar campos (aceptar camelCase y snake_case)
+    const buyerId = ticketData.buyerId || ticketData.buyer_id || ticketData.user_id;
+    const ticketTypeId = ticketData.ticketTypeId || ticketData.ticket_type_id;
+    const eventId = ticketData.eventId || ticketData.event_id;
+    const ticketCode = ticketData.ticketCode || ticketData.ticket_code;
+    const quantity = ticketData.quantity || 1;
+    const price = ticketData.price || ticketData.unit_price;
+    const serviceCharge = ticketData.serviceCharge || ticketData.service_charge || 5.00;
+    const totalAmount = ticketData.totalAmount || ticketData.total_amount || ticketData.final_price;
+    const paymentMethod = ticketData.paymentMethod || ticketData.payment_method || 'tarjeta_credito';
+    const paymentReference = ticketData.paymentReference || ticketData.payment_reference || ticketData.transaction_id;
+    const qrCode = ticketData.qrCode || ticketData.qr_code;
+    
     // Validar datos requeridos
-    if (!ticketData.user_id || !ticketData.ticket_type_id || !ticketData.ticket_code) {
+    if (!buyerId || !ticketTypeId || !ticketCode) {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: 'Faltan datos requeridos (user_id, ticket_type_id, ticket_code)'
+        message: 'Faltan datos requeridos (buyerId/buyer_id, ticketTypeId/ticket_type_id, ticketCode/ticket_code)'
       });
     }
     
-    // Cantidad a comprar (por defecto 1)
-    const quantity = ticketData.quantity || 1;
-    
     // Verificar que el tipo de ticket existe y tiene capacidad
-    const ticketType = await TicketType.findByPk(ticketData.ticket_type_id, { 
+    const ticketType = await TicketType.findByPk(ticketTypeId, { 
       transaction,
       lock: transaction.LOCK.UPDATE 
     });
@@ -243,16 +253,16 @@ export const createTicket = async (req, res) => {
     }
     
     // Verificar capacidad disponible
-    if (ticketType.available_capacity < quantity) {
+    if (ticketType.available < quantity) {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: `Solo hay ${ticketType.available_capacity} tickets disponibles de este tipo`
+        message: `Solo hay ${ticketType.available} tickets disponibles de este tipo`
       });
     }
     
     // Verificar que el usuario existe
-    const user = await User.findByPk(ticketData.user_id, { transaction });
+    const user = await User.findByPk(buyerId, { transaction });
     if (!user) {
       await transaction.rollback();
       return res.status(404).json({
@@ -261,32 +271,51 @@ export const createTicket = async (req, res) => {
       });
     }
     
-    // Crear el ticket
+    // Obtener el evento si no se proporcionó
+    let finalEventId = eventId;
+    if (!finalEventId) {
+      finalEventId = ticketType.eventId;
+    }
+    
+    // Crear el ticket con los campos correctos de la BD
     const ticket = await Ticket.create({
-      ...ticketData,
-      purchase_date: ticketData.purchase_date || new Date(),
-      status: ticketData.status || 'active',
-      is_used: false,
-      quantity: quantity
+      ticketCode: ticketCode,
+      eventId: finalEventId,
+      ticketTypeId: ticketTypeId,
+      buyerId: buyerId,
+      quantity: quantity,
+      price: price,
+      serviceCharge: serviceCharge,
+      totalAmount: totalAmount,
+      status: ticketData.status || 'paid',
+      paymentMethod: paymentMethod,
+      paymentReference: paymentReference,
+      qrCode: qrCode,
+      // Datos del comprador para auditoría
+      buyerName: ticketData.buyerName || ticketData.buyer_name,
+      buyerEmail: ticketData.buyerEmail || ticketData.buyer_email,
+      buyerDocument: ticketData.buyerDocument || ticketData.buyer_document,
+      buyerPhone: ticketData.buyerPhone || ticketData.buyer_phone,
+      purchaseDate: ticketData.purchaseDate || ticketData.purchase_date || new Date()
     }, { transaction });
     
     // Reducir la capacidad disponible del tipo de ticket
-    await ticketType.decrement('available_capacity', { 
-      by: quantity,
-      transaction 
-    });
+    await ticketType.update(
+      { available: ticketType.available - quantity },
+      { transaction }
+    );
     
-    // Actualizar el evento también
-    const event = await Event.findByPk(ticketType.event_id, { 
+    // Actualizar el total vendido en el evento
+    const event = await Event.findByPk(finalEventId, { 
       transaction,
       lock: transaction.LOCK.UPDATE 
     });
     
     if (event) {
-      await event.decrement('available_capacity', { 
-        by: quantity,
-        transaction 
-      });
+      await event.update(
+        { totalSold: (event.totalSold || 0) + quantity },
+        { transaction }
+      );
     }
     
     // Confirmar transacción
@@ -297,8 +326,8 @@ export const createTicket = async (req, res) => {
       include: [
         {
           model: User,
-          as: 'user',
-          attributes: ['id', 'email', 'first_name', 'last_name']
+          as: 'buyer',
+          attributes: ['id', 'email', 'firstName', 'lastName']
         },
         {
           model: TicketType,
@@ -317,12 +346,15 @@ export const createTicket = async (req, res) => {
       data: fullTicket
     });
   } catch (error) {
-    await transaction.rollback();
+    // Solo hacer rollback si la transacción no ha sido completada
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
     console.error('Error al crear ticket:', error);
     res.status(500).json({
       success: false,
       message: 'Error al crear ticket',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: error.message
     });
   }
 };

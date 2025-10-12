@@ -7,9 +7,9 @@ import sequelize from '../config/database.js';
  */
 class Ticket extends Model {
   /**
-   * Validar ticket
+   * Validar ticket (cambiar estado a validado)
    */
-  async validate(operatorId) {
+  async validateTicket(operatorId) {
     if (this.status === 'validated') {
       throw new Error('Este ticket ya ha sido validado');
     }
@@ -27,7 +27,7 @@ class Ticket extends Model {
   /**
    * Cancelar ticket
    */
-  async cancel() {
+  async cancelTicket() {
     if (this.status === 'validated') {
       throw new Error('No se puede cancelar un ticket ya validado');
     }
@@ -108,10 +108,41 @@ Ticket.init(
       type: DataTypes.ENUM('pending', 'paid', 'validated', 'cancelled', 'refunded'),
       defaultValue: 'paid'
     },
-    qrData: {
+    paymentMethod: {
+      type: DataTypes.ENUM('tarjeta_credito', 'tarjeta_debito', 'transferencia', 'efectivo', 'mercadopago', 'paypal'),
+      defaultValue: 'tarjeta_credito',
+      field: 'payment_method'
+    },
+    paymentReference: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      field: 'payment_reference'
+    },
+    qrCode: {
       type: DataTypes.TEXT,
-      allowNull: false,
-      field: 'qr_data'
+      allowNull: true,
+      field: 'qr_code'
+    },
+    // Datos del comprador (almacenados por auditoría)
+    buyerName: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      field: 'buyer_name'
+    },
+    buyerEmail: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      field: 'buyer_email'
+    },
+    buyerDocument: {
+      type: DataTypes.STRING(12),
+      allowNull: true,
+      field: 'buyer_document'
+    },
+    buyerPhone: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+      field: 'buyer_phone'
     },
     validatedBy: {
       type: DataTypes.INTEGER,
@@ -131,21 +162,6 @@ Ticket.init(
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
       field: 'purchase_date'
-    },
-    paymentMethod: {
-      type: DataTypes.ENUM('credit_card', 'debit_card', 'transfer', 'cash'),
-      defaultValue: 'credit_card',
-      field: 'payment_method'
-    },
-    paymentDetails: {
-      type: DataTypes.JSON,
-      defaultValue: {},
-      field: 'payment_details'
-    },
-    additionalInfo: {
-      type: DataTypes.JSON,
-      defaultValue: {},
-      field: 'additional_info'
     }
   },
   {

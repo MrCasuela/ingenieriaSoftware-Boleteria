@@ -67,16 +67,6 @@ Ticket.belongsTo(Operador, {
   as: 'validator'
 });
 
-// Administrador - Event (1:N) - Organizador
-Administrador.hasMany(Event, {
-  foreignKey: 'organizerId',
-  as: 'organizedEvents'
-});
-Event.belongsTo(Administrador, {
-  foreignKey: 'organizerId',
-  as: 'organizer'
-});
-
 export {
   User,
   Cliente,

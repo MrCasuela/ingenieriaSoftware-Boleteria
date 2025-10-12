@@ -69,32 +69,53 @@ export const getUserById = async (req, res) => {
  */
 export const createUser = async (req, res) => {
   try {
-    const userData = req.body;
+    const rawData = req.body;
+    console.log('📥 POST /api/users/register - Datos recibidos:', JSON.stringify(rawData, null, 2));
+    
+    // Normalizar los datos: aceptar tanto camelCase como snake_case
+    const userData = {
+      email: rawData.email,
+      password: rawData.password,
+      firstName: rawData.firstName || rawData.first_name,
+      lastName: rawData.lastName || rawData.last_name,
+      phone: rawData.phone,
+      document: rawData.document,
+      userType: rawData.userType || rawData.user_type
+    };
     
     // Validar datos requeridos
-    if (!userData.email || !userData.password || !userData.first_name || !userData.last_name || !userData.user_type) {
+    if (!userData.email || !userData.password || !userData.firstName || !userData.lastName || !userData.userType) {
+      console.log('❌ Faltan datos requeridos:', {
+        email: !!userData.email,
+        password: !!userData.password,
+        firstName: !!userData.firstName,
+        lastName: !!userData.lastName,
+        userType: !!userData.userType
+      });
       return res.status(400).json({
         success: false,
-        message: 'Faltan datos requeridos (email, password, first_name, last_name, user_type)'
+        message: 'Faltan datos requeridos (email, password, firstName/first_name, lastName/last_name, userType/user_type)'
       });
     }
     
     // Verificar que el email no exista
     const existingUser = await User.findOne({ where: { email: userData.email } });
     if (existingUser) {
+      // Sanitize newline characters from email before logging to prevent log injection
+      const sanitizedEmail = typeof userData.email === 'string' 
+          ? userData.email.replace(/[\r\n]/g, '') 
+          : userData.email;
+      console.log('⚠️ Email ya existe (user input):', sanitizedEmail);
       return res.status(400).json({
         success: false,
         message: 'El email ya está registrado'
       });
     }
     
-    // Hash de la contraseña
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    // Crear usuario (el hook beforeCreate hasheará la contraseña automáticamente)
+    const user = await User.create(userData);
     
-    const user = await User.create({
-      ...userData,
-      password: hashedPassword
-    });
+    console.log('✅ Usuario creado exitosamente:', user.id);
     
     // No devolver la contraseña
     const userResponse = user.toJSON();
@@ -106,11 +127,12 @@ export const createUser = async (req, res) => {
       data: userResponse
     });
   } catch (error) {
-    console.error('Error al crear usuario:', error);
+    console.error('❌ Error al crear usuario:', error);
+    console.error('Stack trace:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Error al crear usuario',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: error.message
     });
   }
 };
@@ -132,11 +154,7 @@ export const updateUser = async (req, res) => {
       });
     }
     
-    // Si se está actualizando la contraseña, hashearla
-    if (userData.password) {
-      userData.password = await bcrypt.hash(userData.password, 10);
-    }
-    
+    // Actualizar usuario (el hook beforeUpdate hasheará la contraseña si cambió)
     await user.update(userData);
     
     // No devolver la contraseña
@@ -195,24 +213,31 @@ export const deleteUser = async (req, res) => {
  */
 export const loginUser = async (req, res) => {
   try {
-    const { email, password, user_type } = req.body;
+    const rawData = req.body;
+    console.log('📥 POST /api/users/login - Datos recibidos:', JSON.stringify(rawData, null, 2));
     
-    if (!email || !password || !user_type) {
+    const email = rawData.email;
+    const password = rawData.password;
+    const userType = rawData.userType || rawData.user_type;
+    
+    if (!email || !password || !userType) {
+      console.log('❌ Faltan datos de login:', { email: !!email, password: !!password, userType: !!userType });
       return res.status(400).json({
         success: false,
         message: 'Email, contraseña y tipo de usuario son requeridos'
       });
     }
     
-    // Buscar usuario por email y tipo
+    // Buscar usuario por email y tipo (usando camelCase para Sequelize)
     const user = await User.findOne({
       where: {
         email,
-        user_type
+        userType
       }
     });
     
     if (!user) {
+      console.log('❌ Usuario no encontrado:', { email, userType });
       return res.status(401).json({
         success: false,
         message: 'Credenciales inválidas'
@@ -223,6 +248,7 @@ export const loginUser = async (req, res) => {
     const isValidPassword = await bcrypt.compare(password, user.password);
     
     if (!isValidPassword) {
+      console.log('❌ Contraseña inválida para:', email);
       return res.status(401).json({
         success: false,
         message: 'Credenciales inválidas'
@@ -231,14 +257,14 @@ export const loginUser = async (req, res) => {
     
     // Verificar que el usuario esté activo
     if (!user.isActive) {
+      console.log('⚠️ Usuario inactivo:', `"${(email || "").replace(/[\n\r]/g, "")}"`);
       return res.status(403).json({
         success: false,
         message: 'Usuario inactivo'
       });
     }
     
-    // Actualizar último login
-    await user.update({ lastLogin: new Date() });
+    console.log('✅ Login exitoso:', `"${(email || "").replace(/[\n\r]/g, "")}"`);
     
     // No devolver la contraseña
     const userResponse = user.toJSON();
@@ -250,11 +276,11 @@ export const loginUser = async (req, res) => {
       data: userResponse
     });
   } catch (error) {
-    console.error('Error en login:', error);
+    console.error('❌ Error en login:', error);
     res.status(500).json({
       success: false,
       message: 'Error en login',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: error.message
     });
   }
 };

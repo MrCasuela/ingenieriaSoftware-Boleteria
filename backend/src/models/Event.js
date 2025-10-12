@@ -16,6 +16,7 @@ Event.init(
     name: {
       type: DataTypes.STRING(200),
       allowNull: false,
+      unique: true,
       validate: {
         notEmpty: {
           msg: 'El nombre del evento es obligatorio'
@@ -59,10 +60,16 @@ Event.init(
       type: DataTypes.ENUM('draft', 'published', 'cancelled', 'completed'),
       defaultValue: 'published'
     },
-    organizerId: {
+    totalCapacity: {
       type: DataTypes.INTEGER,
-      allowNull: true,
-      field: 'organizer_id'
+      allowNull: false,
+      field: 'total_capacity',
+      validate: {
+        min: {
+          args: [1],
+          msg: 'El aforo total debe ser mayor a 0'
+        }
+      }
     },
     totalSold: {
       type: DataTypes.INTEGER,

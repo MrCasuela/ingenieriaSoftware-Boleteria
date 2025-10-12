@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- Tabla: events
 CREATE TABLE IF NOT EXISTS events (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(200) NOT NULL,
+    name VARCHAR(200) NOT NULL UNIQUE,
     description TEXT NOT NULL,
     date DATETIME NOT NULL,
     location VARCHAR(200) NOT NULL,
@@ -56,13 +56,13 @@ CREATE TABLE IF NOT EXISTS events (
     image VARCHAR(500) DEFAULT 'https://via.placeholder.com/400x200',
     category ENUM('concierto', 'deportes', 'teatro', 'conferencia', 'festival', 'otro') DEFAULT 'otro',
     status ENUM('draft', 'published', 'cancelled', 'completed') DEFAULT 'published',
-    organizer_id INT,
+    total_capacity INT NOT NULL CHECK (total_capacity > 0),
     total_sold INT DEFAULT 0,
     revenue DECIMAL(12, 2) DEFAULT 0.00,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
-    FOREIGN KEY (organizer_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_name (name),
     INDEX idx_date_status (date, status),
     INDEX idx_category (category),
     FULLTEXT INDEX idx_search (name, description)

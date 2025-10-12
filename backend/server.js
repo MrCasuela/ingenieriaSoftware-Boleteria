@@ -136,18 +136,16 @@ const startServer = async () => {
   try {
     logger.info('SERVER', 'Iniciando servidor...');
     
-    // Intentar conectar a la base de datos (opcional para email)
+    // Ejecutar seed para crear datos predeterminados
+    // El seed maneja su propia conexión con reintentos
     try {
-      await connectDB();
-      logger.success('DATABASE', 'Conexión a base de datos establecida');
-      
-      // Ejecutar seed para crear usuarios predeterminados
-      logger.info('DATABASE', 'Verificando usuarios predeterminados...');
+      logger.info('DATABASE', 'Ejecutando seed de datos predeterminados...');
       await seedDatabase();
-      logger.success('DATABASE', 'Verificación de usuarios completada');
+      logger.success('DATABASE', 'Seed completado exitosamente');
     } catch (dbError) {
-      logger.warn('DATABASE', 'Base de datos no disponible, pero el servidor continuará');
-      logger.warn('DATABASE', 'La funcionalidad de email seguirá funcionando');
+      logger.error('DATABASE', 'Error en base de datos o seed:', dbError);
+      console.error('❌ Error detallado de BD/Seed:', dbError.message);
+      logger.warn('DATABASE', 'El servidor continuará sin datos iniciales');
     }
     
     // Iniciar servidor

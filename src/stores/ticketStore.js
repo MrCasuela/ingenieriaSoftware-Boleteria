@@ -251,8 +251,16 @@ export const useTicketStore = defineStore('ticket', {
     async saveTicketToDatabase() {
       try {
         console.log('💾 Guardando ticket en la base de datos...')
+        console.log('📋 Datos del ticket a guardar:', {
+          ticketCode: this.ticketCode,
+          eventId: this.selectedEvent.id,
+          ticketTypeId: this.selectedTicket.id,
+          quantity: this.ticketQuantity,
+          personalData: this.personalData
+        })
         
         // 1. Crear o buscar el usuario (cliente)
+        console.log('👤 Paso 1: Creando/buscando usuario...')
         const userResponse = await fetch('/api/users/register', {
           method: 'POST',
           headers: {
@@ -265,14 +273,17 @@ export const useTicketStore = defineStore('ticket', {
             phone: this.personalData.phone,
             document: this.personalData.document,
             password: 'Cliente123!', // Password temporal para clientes
-            user_type: 'cliente'
+            user_type: 'Cliente'
           })
         })
         
+        console.log('📡 Respuesta de registro de usuario:', userResponse.status)
+        
         let userId
         const userData = await userResponse.json()
+        console.log('📄 Datos de usuario:', userData)
         
-        if (userResponse.ok) {
+        if (userResponse.ok && userData.success) {
           userId = userData.data.id
           console.log('✅ Usuario creado:', userId)
         } else if (userData.message && userData.message.includes('ya está registrado')) {
@@ -281,42 +292,58 @@ export const useTicketStore = defineStore('ticket', {
           const allUsersResponse = await fetch('/api/users')
           if (allUsersResponse.ok) {
             const allUsersData = await allUsersResponse.json()
-            const existingUser = allUsersData.data.find(u => u.email === this.personalData.email)
-            if (existingUser) {
-              userId = existingUser.id
-              console.log('✅ Usuario encontrado:', userId)
+            if (allUsersData.success && allUsersData.data) {
+              const existingUser = allUsersData.data.find(u => u.email === this.personalData.email)
+              if (existingUser) {
+                userId = existingUser.id
+                console.log('✅ Usuario encontrado:', userId)
+              }
             }
           }
         }
         
         if (!userId) {
+          console.error('❌ No se pudo crear o encontrar el usuario')
           throw new Error('No se pudo crear o encontrar el usuario')
         }
         
         // 2. Crear el ticket en la base de datos
+        console.log('🎫 Paso 2: Creando ticket en BD...')
+        const ticketPayload = {
+          ticketCode: this.ticketCode,
+          eventId: this.selectedEvent.id,
+          ticketTypeId: this.selectedTicket.id,
+          buyerId: userId,
+          quantity: this.ticketQuantity,
+          price: this.selectedTicket.price,
+          serviceCharge: this.serviceCharge,
+          totalAmount: this.totalAmount,
+          status: 'paid',
+          paymentMethod: this.paymentResult.cardType === 'credit' ? 'tarjeta_credito' : 'tarjeta_debito',
+          paymentReference: this.paymentResult.transactionId,
+          qrCode: this.ticketCode,
+          // Datos del comprador para auditoría
+          buyerName: `${this.personalData.firstName} ${this.personalData.lastName}`,
+          buyerEmail: this.personalData.email,
+          buyerDocument: this.personalData.document,
+          buyerPhone: this.personalData.phone
+        }
+        
+        console.log('📦 Payload del ticket:', ticketPayload)
+        
         const ticketResponse = await fetch('/api/tickets', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            user_id: userId,
-            ticket_type_id: this.selectedTicket.id,
-            ticket_code: this.ticketCode,
-            quantity: this.ticketQuantity,
-            unit_price: this.selectedTicket.price,
-            total_price: this.subtotal,
-            service_charge: this.serviceCharge,
-            final_price: this.totalAmount,
-            payment_method: this.paymentResult.cardType,
-            transaction_id: this.paymentResult.transactionId,
-            purchase_date: new Date().toISOString(),
-            status: 'active'
-          })
+          body: JSON.stringify(ticketPayload)
         })
+        
+        console.log('📡 Respuesta de creación de ticket:', ticketResponse.status)
         
         if (!ticketResponse.ok) {
           const errorData = await ticketResponse.json()
+          console.error('❌ Error del servidor:', errorData)
           throw new Error(errorData.message || 'Error al crear ticket en BD')
         }
         
@@ -493,8 +520,5 @@ export const useTicketStore = defineStore('ticket', {
         }
       }
     }
-  }
-})
-
   }
 })

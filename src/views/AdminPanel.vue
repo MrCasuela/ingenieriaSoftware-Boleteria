@@ -4,8 +4,13 @@
     <header class="admin-header">
       <div class="header-content">
         <div class="header-left">
-          <h1>📊 Panel de Administrador</h1>
-          <p>Gestión de Eventos y Tickets</p>
+          <button @click="goHome" class="btn-home">
+            🏠 Inicio
+          </button>
+          <div class="header-title">
+            <h1>📊 Panel de Administrador</h1>
+            <p>Gestión de Eventos y Tickets</p>
+          </div>
         </div>
         <div class="header-right">
           <span class="user-info">
@@ -814,6 +819,10 @@ export default {
       router.push('/operator/login')
     }
 
+    const goHome = () => {
+      router.push('/')
+    }
+
     // Lifecycle
     onMounted(() => {
       loadData()
@@ -838,6 +847,8 @@ export default {
       formatDate,
       formatPrice,
       getOccupancyPercentage,
+      handleLogout,
+      goHome,
       getEventTicketTypesCount,
       getEventOccupancy,
       getEventRevenue,
@@ -879,14 +890,47 @@ export default {
   align-items: center;
 }
 
-.header-left h1 {
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header-title h1 {
   font-size: 28px;
   margin-bottom: 5px;
 }
 
-.header-left p {
+.header-title p {
   font-size: 14px;
   opacity: 0.9;
+}
+
+.btn-home {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.btn-home:hover {
+  background: white;
+  color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-home:active {
+  transform: translateY(0);
 }
 
 .header-right {
@@ -1461,6 +1505,16 @@ export default {
     flex-direction: column;
     gap: 15px;
     text-align: center;
+  }
+
+  .header-left {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn-home {
+    padding: 8px 16px;
+    font-size: 13px;
   }
 
   .tabs-container {

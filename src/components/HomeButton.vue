@@ -24,8 +24,8 @@ export default {
     },
     position: {
       type: String,
-      default: 'top-right',
-      validator: (value) => ['top-right', 'top-left', 'top-center'].includes(value)
+      default: 'bottom-right',
+      validator: (value) => ['top-right', 'top-left', 'top-center', 'bottom-right', 'bottom-left'].includes(value)
     }
   },
   setup(props) {
@@ -50,7 +50,7 @@ export default {
 <style scoped>
 .home-button-container {
   position: fixed;
-  z-index: 9999;
+  z-index: 999;
 }
 
 /* Posiciones disponibles */
@@ -70,20 +70,31 @@ export default {
   transform: translateX(-50%);
 }
 
+.position-bottom-right {
+  bottom: 30px;
+  right: 30px;
+}
+
+.position-bottom-left {
+  bottom: 30px;
+  left: 30px;
+}
+
 .home-button {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  gap: 6px;
+  background: rgba(102, 126, 234, 0.9);
+  backdrop-filter: blur(10px);
   color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 50px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  padding: 10px 18px;
+  border-radius: 12px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
 }
@@ -95,7 +106,7 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -105,53 +116,63 @@ export default {
 }
 
 .home-button:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+  background: rgba(102, 126, 234, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .home-button:active {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .home-icon {
-  font-size: 18px;
+  font-size: 16px;
   display: flex;
   align-items: center;
-  animation: pulse 2s ease-in-out infinite;
+  line-height: 1;
 }
 
 .home-text {
-  font-size: 14px;
-  letter-spacing: 0.5px;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  line-height: 1;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
-  .home-button-container {
+  .position-bottom-right {
+    bottom: 20px;
+    right: 20px;
+  }
+  
+  .position-bottom-left {
+    bottom: 20px;
+    left: 20px;
+  }
+  
+  .position-top-right {
     top: 15px;
     right: 15px;
   }
   
+  .position-top-left {
+    top: 15px;
+    left: 15px;
+  }
+  
   .home-button {
-    padding: 10px 16px;
+    padding: 8px 14px;
+    font-size: 12px;
   }
   
   .home-icon {
-    font-size: 16px;
+    font-size: 14px;
   }
   
   .home-text {
-    font-size: 13px;
+    font-size: 12px;
   }
 }
 
@@ -162,11 +183,21 @@ export default {
   }
   
   .home-button {
-    padding: 12px;
+    padding: 10px;
     border-radius: 50%;
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     justify-content: center;
+  }
+  
+  .position-bottom-right {
+    bottom: 15px;
+    right: 15px;
+  }
+  
+  .position-bottom-left {
+    bottom: 15px;
+    left: 15px;
   }
 }
 </style>

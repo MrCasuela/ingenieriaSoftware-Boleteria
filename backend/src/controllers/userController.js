@@ -104,7 +104,6 @@ export const createUser = async (req, res) => {
       const sanitizedEmail = typeof userData.email === 'string' 
           ? userData.email.replace(/[\r\n]/g, '') 
           : userData.email;
-      console.log('⚠️ Email ya existe (user input):', sanitizedEmail);
       return res.status(400).json({
         success: false,
         message: 'El email ya está registrado'

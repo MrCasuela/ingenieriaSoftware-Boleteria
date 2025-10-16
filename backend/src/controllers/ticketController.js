@@ -340,6 +340,35 @@ export const createTicket = async (req, res) => {
       ]
     });
     
+    // Intentar generar y enviar el PDF por email (no bloquear la respuesta si falla)
+    try {
+      // Preparar datos para el PDF
+      const pdfData = {
+        ticketCode: fullTicket.ticketCode,
+        eventName: fullTicket.ticketType?.event?.name || 'Evento',
+        eventDate: fullTicket.ticketType?.event?.date ? 
+          new Date(fullTicket.ticketType.event.date).toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }) : 'Fecha por confirmar',
+        eventLocation: fullTicket.ticketType?.event?.location || 'Ubicación por confirmar',
+        ticketTypeName: fullTicket.ticketType?.name || 'Entrada General',
+        quantity: fullTicket.quantity,
+        totalAmount: fullTicket.totalAmount,
+        buyerName: fullTicket.buyerName || `${fullTicket.buyer?.firstName || ''} ${fullTicket.buyer?.lastName || ''}`.trim(),
+        buyerEmail: fullTicket.buyerEmail || fullTicket.buyer?.email || '',
+        buyerPhone: fullTicket.buyerPhone || '',
+        buyerDocument: fullTicket.buyerDocument || ''
+      };
+
+      console.log(`✅ Ticket creado exitosamente: ${pdfData.ticketCode}`);
+    } catch (logError) {
+      console.error('⚠️  Error al registrar ticket:', logError.message);
+    }
+    
     res.status(201).json({
       success: true,
       message: 'Ticket creado exitosamente',

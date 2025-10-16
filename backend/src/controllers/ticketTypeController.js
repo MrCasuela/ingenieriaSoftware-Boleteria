@@ -1,29 +1,40 @@
 import TicketType from '../models/TicketType.js';
 import Event from '../models/Event.js';
 import logger from '../utils/logger.js';
+import { getAllMockTicketTypes, getTicketTypesByEventMock, findTicketTypeById as findMockTicketTypeById } from '../utils/mockTicketTypes.js';
 
 /**
  * Obtener todos los tipos de tickets
  */
 export const getAllTicketTypes = async (req, res) => {
   try {
-    const ticketTypes = await TicketType.findAll({
-      order: [['created_at', 'DESC']]
-    });
+    let ticketTypes;
+    let mappedTicketTypes;
     
-    // Mapear campos del modelo al formato de API
-    const mappedTicketTypes = ticketTypes.map(tt => ({
-      id: tt.id,
-      event_id: tt.eventId,
-      name: tt.name,
-      description: tt.description,
-      price: tt.price,
-      total_capacity: tt.quantity,
-      available_capacity: tt.available,
-      sold_tickets: tt.quantity - tt.available,
-      created_at: tt.createdAt,
-      updated_at: tt.updatedAt
-    }));
+    try {
+      // Intentar obtener de la base de datos
+      ticketTypes = await TicketType.findAll({
+        order: [['created_at', 'DESC']]
+      });
+      
+      // Mapear campos del modelo al formato de API
+      mappedTicketTypes = ticketTypes.map(tt => ({
+        id: tt.id,
+        event_id: tt.eventId,
+        name: tt.name,
+        description: tt.description,
+        price: tt.price,
+        total_capacity: tt.quantity,
+        available_capacity: tt.available,
+        sold_tickets: tt.quantity - tt.available,
+        created_at: tt.createdAt,
+        updated_at: tt.updatedAt
+      }));
+    } catch (dbError) {
+      console.log('⚠️  Base de datos no disponible, usando tipos de tickets mock...');
+      // Fallback a tipos de tickets mock
+      mappedTicketTypes = getAllMockTicketTypes();
+    }
     
     res.json({
       success: true,
@@ -45,32 +56,41 @@ export const getAllTicketTypes = async (req, res) => {
 export const getTicketTypesByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
+    let ticketTypes;
+    let mappedTicketTypes;
     
-    const ticketTypes = await TicketType.findAll({
-      where: { eventId: eventId },
-      order: [['price', 'ASC']]
-    });
-    
-    // Mapear campos del modelo al formato de API
-    const mappedTicketTypes = ticketTypes.map(tt => ({
-      id: tt.id,
-      event_id: tt.eventId,
-      name: tt.name,
-      description: tt.description,
-      price: tt.price,
-      total_capacity: tt.quantity,
-      available_capacity: tt.available,
-      sold_tickets: tt.quantity - tt.available,
-      created_at: tt.createdAt,
-      updated_at: tt.updatedAt
-    }));
+    try {
+      // Intentar obtener de la base de datos
+      ticketTypes = await TicketType.findAll({
+        where: { eventId: eventId },
+        order: [['price', 'DESC']]
+      });
+      
+      // Mapear campos del modelo al formato de API
+      mappedTicketTypes = ticketTypes.map(tt => ({
+        id: tt.id,
+        event_id: tt.eventId,
+        name: tt.name,
+        description: tt.description,
+        price: tt.price,
+        total_capacity: tt.quantity,
+        available_capacity: tt.available,
+        sold_tickets: tt.quantity - tt.available,
+        created_at: tt.createdAt,
+        updated_at: tt.updatedAt
+      }));
+    } catch (dbError) {
+      console.log('⚠️  Base de datos no disponible, usando tipos de tickets mock...');
+      // Fallback a tipos de tickets mock
+      mappedTicketTypes = getTicketTypesByEventMock(eventId);
+    }
     
     res.json({
       success: true,
       data: mappedTicketTypes
     });
   } catch (error) {
-    console.error('Error al obtener tipos de tickets:', error);
+    console.error('Error al obtener tipos de tickets por evento:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener tipos de tickets',

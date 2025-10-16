@@ -73,27 +73,34 @@ router.beforeEach((to, from, next) => {
       return
     }
 
-    // Verificar rol de operador
-    if (to.meta.requiresOperator && !authStore.isOperator) {
-      if (authStore.isAdministrator) {
-        next('/admin/panel')
-      } else {
-        next('/operator/login')
+    // Verificar rol de operador - NO puede acceder a admin
+    if (to.meta.requiresOperator) {
+      if (!authStore.isOperator) {
+        if (authStore.isAdministrator) {
+          // Admin no puede acceder al panel de operador, tiene su propio panel
+          next('/admin/panel')
+        } else {
+          next('/operator/login')
+        }
+        return
       }
-      return
     }
 
-    // Verificar rol de administrador
-    if (to.meta.requiresAdmin && !authStore.isAdministrator) {
-      if (authStore.isOperator) {
-        next('/operator/panel')
-      } else {
-        next('/operator/login')
+    // Verificar rol de administrador - Solo admin puede acceder
+    if (to.meta.requiresAdmin) {
+      if (!authStore.isAdministrator) {
+        if (authStore.isOperator) {
+          // Operador no puede acceder al panel de admin
+          alert('⚠️ No tienes permisos para acceder al panel de administrador. Solo administradores pueden ver reportes y gestionar usuarios.')
+          next('/operator/panel')
+        } else {
+          next('/operator/login')
+        }
+        return
       }
-      return
     }
 
-    // Redirigir al panel correspondiente si ya está autenticado
+    // Redirigir al panel correspondiente si ya está autenticado y va al login
     if (to.name === 'OperatorLogin' && authStore.isAuthenticated) {
       if (authStore.isAdministrator) {
         next('/admin/panel')
@@ -105,6 +112,7 @@ router.beforeEach((to, from, next) => {
       return
     }
 
+    // Continuar con la navegación
     next()
   } catch (error) {
     console.error('Error en navigation guard:', error)

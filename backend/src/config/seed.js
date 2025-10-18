@@ -164,7 +164,7 @@ const seedDatabase = async () => {
         description: 'El mejor festival de rock del año con bandas internacionales',
         date: new Date('2025-12-15T20:00:00'),
         location: 'Estadio Luna Park, Buenos Aires',
-        image: 'https://via.placeholder.com/400x250',
+        image: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=400&h=250&fit=crop',
         category: 'concierto',
         totalCapacity: 5000,
         status: 'published'
@@ -175,7 +175,7 @@ const seedDatabase = async () => {
         description: 'La clásica obra de Shakespeare interpretada por el Teatro Colón',
         date: new Date('2025-11-20T19:30:00'),
         location: 'Teatro Colón, Buenos Aires',
-        image: 'https://via.placeholder.com/400x250',
+        image: 'https://images.unsplash.com/photo-1503095396549-807759245b35?w=400&h=250&fit=crop',
         category: 'teatro',
         totalCapacity: 800,
         status: 'published'
@@ -186,7 +186,7 @@ const seedDatabase = async () => {
         description: 'Los mejores DJs de la escena internacional',
         date: new Date('2026-01-10T22:00:00'),
         location: 'Costa Salguero, Buenos Aires',
-        image: 'https://via.placeholder.com/400x250',
+        image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=250&fit=crop',
         category: 'festival',
         totalCapacity: 10000,
         status: 'published'

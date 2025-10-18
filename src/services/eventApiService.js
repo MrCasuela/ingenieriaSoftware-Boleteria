@@ -10,11 +10,13 @@ const API_BASE_URL = '/api';
  */
 export const getAllEvents = async () => {
   try {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = localStorage.getItem('apiToken')
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const response = await fetch(`${API_BASE_URL}/events`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers
     });
 
     if (!response.ok) {
@@ -34,11 +36,13 @@ export const getAllEvents = async () => {
  */
 export const getEventById = async (id) => {
   try {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = localStorage.getItem('apiToken')
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const response = await fetch(`${API_BASE_URL}/events/${id}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers
     });
 
     if (!response.ok) {
@@ -58,11 +62,13 @@ export const getEventById = async (id) => {
  */
 export const createEvent = async (eventData) => {
   try {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = localStorage.getItem('apiToken')
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const response = await fetch(`${API_BASE_URL}/events`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers,
       body: JSON.stringify(eventData)
     });
 
@@ -84,11 +90,13 @@ export const createEvent = async (eventData) => {
  */
 export const updateEvent = async (id, eventData) => {
   try {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = localStorage.getItem('apiToken')
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const response = await fetch(`${API_BASE_URL}/events/${id}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers,
       body: JSON.stringify(eventData)
     });
 
@@ -110,11 +118,13 @@ export const updateEvent = async (id, eventData) => {
  */
 export const deleteEvent = async (id) => {
   try {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = localStorage.getItem('apiToken')
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const response = await fetch(`${API_BASE_URL}/events/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers
     });
 
     if (!response.ok) {

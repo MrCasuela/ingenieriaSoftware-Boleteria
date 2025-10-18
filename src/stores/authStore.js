@@ -97,36 +97,39 @@ export const useAuthStore = defineStore('auth', {
     // Login con API del backend - Detecta automáticamente el tipo de usuario
     async loginWithAPI(email, password) {
       try {
-        // Primero intentar con Operador
-        let response = await fetch('/api/users/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            email: email,
-            password: password,
-            user_type: 'Operador'
-          })
-        })
+        // Intentar login probando ambos tipos en secuencia sin mostrar errores
+        const userTypes = ['Operador', 'Administrador', 'Cliente'];
+        let data = null;
+        
+        for (const userType of userTypes) {
+          try {
+            const response = await fetch('/api/users/login', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                email: email,
+                password: password,
+                user_type: userType
+              })
+            });
 
-        let data = await response.json()
-
-        // Si no fue exitoso con Operador, intentar con Administrador
-        if (!data.success) {
-          response = await fetch('/api/users/login', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              email: email,
-              password: password,
-              user_type: 'Administrador'
-            })
-          })
-
-          data = await response.json()
+            const result = await response.json();
+            
+            if (result.success) {
+              data = result;
+              break;
+            }
+          } catch (err) {
+            // Continuar con el siguiente tipo de usuario
+            continue;
+          }
+        }
+        
+        // Si ningún tipo funcionó, lanzar error
+        if (!data || !data.success) {
+          throw new Error('Credenciales inválidas');
         }
 
         if (data.success && data.data) {
@@ -145,11 +148,19 @@ export const useAuthStore = defineStore('auth', {
             permissions: userData.permissions,
             shift: userData.shift
           }
-          this.userType = userData.userType.toLowerCase() === 'administrador' ? 'administrador' : 'operador'
+          // Mapear explícitamente los tipos recibidos desde la API a los valores usados en el frontend
+          const rawType = (userData.userType || '').toString().toLowerCase()
+          if (rawType === 'administrador') {
+            this.userType = 'administrador'
+          } else if (rawType === 'operador') {
+            this.userType = 'operador'
+          } else {
+            this.userType = 'cliente'
+          }
           this.isAuthenticated = true
 
           // Guardar sesión en localStorage
-          const storageKey = this.userType === 'administrador' ? 'adminSession' : 'operatorSession'
+          const storageKey = this.userType === 'administrador' ? 'adminSession' : (this.userType === 'operador' ? 'operatorSession' : 'clientSession')
           localStorage.setItem(storageKey, JSON.stringify({
             userId: userData.id,
             email: userData.email,
@@ -159,6 +170,11 @@ export const useAuthStore = defineStore('auth', {
             permissions: userData.permissions,
             timestamp: Date.now()
           }))
+
+          // Guardar token si viene en la respuesta
+          if (data.token) {
+            localStorage.setItem('apiToken', data.token)
+          }
 
           return {
             success: true,

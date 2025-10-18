@@ -8,17 +8,21 @@ import {
   validateTicket,
   cancelTicket
 } from '../controllers/ticketController.js';
-import { protect, adminOnly, operadorOrAdmin } from '../middleware/auth.js';
+import { authenticate, authorizeRoles } from '../middleware/roleMiddleware.js';
 
 const router = express.Router();
 
-// Rutas protegidas
-router.get('/', protect, adminOnly, getAllTickets); // Solo admin puede ver todos los tickets
-router.get('/user/:userId', protect, getTicketsByUser); // Usuario autenticado puede ver sus tickets
-router.get('/code/:ticketCode', protect, operadorOrAdmin, getTicketByCode); // Operador/Admin pueden buscar por código
-router.get('/by-rut/:rut', protect, operadorOrAdmin, getTicketsByRut); // Operador/Admin pueden buscar por RUT
-router.post('/', createTicket); // Público - crear ticket (compra)
-router.post('/validate/:ticketCode', protect, operadorOrAdmin, validateTicket); // Operador/Admin pueden validar
-router.put('/cancel/:id', protect, adminOnly, cancelTicket); // Solo admin puede cancelar
+// Rutas públicas/protegidas según sea necesario
+router.get('/', authenticate, authorizeRoles('Administrador'), getAllTickets);
+router.get('/user/:userId', authenticate, authorizeRoles('Administrador'), getTicketsByUser);
+router.get('/code/:ticketCode', authenticate, authorizeRoles('Administrador','Operador'), getTicketByCode);
+router.get('/by-rut/:rut', authenticate, authorizeRoles('Administrador','Operador'), getTicketsByRut);
+router.post('/', authenticate, authorizeRoles('Administrador'), createTicket);
+
+// Validación de tickets: solo Operador
+router.post('/validate/:ticketCode', authenticate, authorizeRoles('Operador'), validateTicket);
+
+// Cancelación: solo Admin
+router.put('/cancel/:id', authenticate, authorizeRoles('Administrador'), cancelTicket);
 
 export default router;

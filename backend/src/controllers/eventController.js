@@ -1,23 +1,13 @@
 import Event from '../models/Event.js';
-import { mockEvents, findEventById, getAllActiveEvents, createMockEvent, updateMockEvent, deleteMockEvent } from '../utils/mockEvents.js';
 
 /**
  * Obtener todos los eventos
  */
 export const getAllEvents = async (req, res) => {
   try {
-    let events;
-    
-    try {
-      // Intentar obtener de la base de datos
-      events = await Event.findAll({
-        order: [['date', 'ASC']]
-      });
-    } catch (dbError) {
-      console.log('⚠️  Base de datos no disponible, usando eventos mock...');
-      // Fallback a eventos mock
-      events = getAllActiveEvents().sort((a, b) => new Date(a.date) - new Date(b.date));
-    }
+    const events = await Event.findAll({
+      order: [['date', 'ASC']]
+    });
     
     res.json({
       success: true,
@@ -39,16 +29,7 @@ export const getAllEvents = async (req, res) => {
 export const getEventById = async (req, res) => {
   try {
     const { id } = req.params;
-    let event;
-    
-    try {
-      // Intentar obtener de la base de datos
-      event = await Event.findByPk(id);
-    } catch (dbError) {
-      console.log('⚠️  Base de datos no disponible, usando eventos mock...');
-      // Fallback a eventos mock
-      event = findEventById(id);
-    }
+    const event = await Event.findByPk(id);
     
     if (!event) {
       return res.status(404).json({

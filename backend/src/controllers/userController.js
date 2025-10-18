@@ -1,6 +1,4 @@
 import User from '../models/User.js';
-import jwt from 'jsonwebtoken';
-import { findUserByEmail, comparePassword, toPublicJSON } from '../utils/mockUsers.js';
 
 /**
  * Obtener todos los usuarios
@@ -102,13 +100,13 @@ export const createUser = async (req, res) => {
     // Verificar que el email no exista
     const existingUser = await User.findOne({ where: { email: userData.email } });
     if (existingUser) {
-      // Sanitize newline characters from email before logging to prevent log injection
-      const sanitizedEmail = typeof userData.email === 'string' 
-          ? userData.email.replace(/[\r\n]/g, '') 
-          : userData.email;
-      return res.status(400).json({
-        success: false,
-        message: 'El email ya está registrado'
+      // Si ya existe, devolver el usuario existente (sin contraseña) para permitir flujos idempotentes
+      const userResponse = existingUser.toJSON();
+      delete userResponse.password;
+      return res.status(200).json({
+        success: true,
+        message: 'El email ya está registrado',
+        data: userResponse
       });
     }
     
@@ -228,30 +226,13 @@ export const loginUser = async (req, res) => {
       });
     }
     
-    let user;
-    let isValidPassword = false;
-    
-    // Intentar login con base de datos
-    try {
-      user = await User.findOne({
-        where: {
-          email,
-          userType
-        }
-      });
-      
-      if (user) {
-        // Verificar contraseña (comparación directa sin hash)
-        isValidPassword = password === user.password;
+    // Buscar usuario por email y tipo (usando camelCase para Sequelize)
+    const user = await User.findOne({
+      where: {
+        email,
+        userType
       }
-    } catch (dbError) {
-      console.log('⚠️  Base de datos no disponible, usando usuarios mock...');
-      // Si hay error de BD, usar usuarios mock
-      user = findUserByEmail(email, userType);
-      if (user) {
-        isValidPassword = comparePassword(password, user.password);
-      }
-    }
+    });
     
     if (!user) {
       console.log('❌ Usuario no encontrado:', { email, userType });
@@ -260,6 +241,9 @@ export const loginUser = async (req, res) => {
         message: 'Credenciales inválidas'
       });
     }
+    
+    // Verificar contraseña (comparación directa sin hash)
+    const isValidPassword = password === user.password;
     
     if (!isValidPassword) {
       console.log('❌ Contraseña inválida para:', `"${(email || "").replace(/[\n\r]/g, "")}"`);
@@ -271,35 +255,28 @@ export const loginUser = async (req, res) => {
     
     // Verificar que el usuario esté activo
     if (!user.isActive) {
-      console.log('⚠️  Usuario inactivo:', `"${(email || "").replace(/[\n\r]/g, "")}"`);
+      console.log('⚠️ Usuario inactivo:', `"${(email || "").replace(/[\n\r]/g, "")}"`);
       return res.status(403).json({
         success: false,
         message: 'Usuario inactivo'
       });
     }
     
-    console.log('✅ Login exitoso:', `"${(email || "").replace(/[\n\r]/g, "")}"`);
-    
+    console.log('✅ Login exitoso:', `"${(email || "").replace(/[\\n\\r]/g, "")}"`);
+
     // Generar token JWT
-    const token = jwt.sign(
-      { id: user.id, email: user.email, userType: user.userType },
-      process.env.JWT_SECRET || 'tu-clave-secreta-muy-segura',
-      { expiresIn: process.env.JWT_EXPIRE || '7d' }
-    );
-    
-    // Preparar respuesta sin contraseña
-    const userResponse = user.toJSON ? user.toJSON() : toPublicJSON(user);
-    if (userResponse.password) {
-      delete userResponse.password;
-    }
-    
+    const jwt = await import('jsonwebtoken');
+    const token = jwt.sign ? jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '7d' }) : null;
+
+    // No devolver la contraseña
+    const userResponse = user.toJSON();
+    delete userResponse.password;
+
     res.json({
       success: true,
       message: 'Login exitoso',
-      data: {
-        ...userResponse,
-        token
-      }
+      data: userResponse,
+      token
     });
   } catch (error) {
     console.error('❌ Error en login:', error);

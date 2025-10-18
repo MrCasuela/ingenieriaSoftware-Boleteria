@@ -261,11 +261,13 @@ export const useTicketStore = defineStore('ticket', {
         
         // 1. Crear o buscar el usuario (cliente)
         console.log('👤 Paso 1: Creando/buscando usuario...')
+        const headers = { 'Content-Type': 'application/json' }
+        const token = localStorage.getItem('apiToken')
+        if (token) headers['Authorization'] = `Bearer ${token}`
+
         const userResponse = await fetch('/api/users/register', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers,
           body: JSON.stringify({
             email: this.personalData.email,
             first_name: this.personalData.firstName,
@@ -279,17 +281,24 @@ export const useTicketStore = defineStore('ticket', {
         
         console.log('📡 Respuesta de registro de usuario:', userResponse.status)
         
-        let userId
-        const userData = await userResponse.json()
+  let userId
+  const userData = await userResponse.json()
         console.log('📄 Datos de usuario:', userData)
         
         if (userResponse.ok && userData.success) {
           userId = userData.data.id
           console.log('✅ Usuario creado:', userId)
+        } else if (userData.success && userData.data) {
+          // Si la API devolvió el usuario existente en data
+          userId = userData.data.id
+          console.log('⚠️ Email ya registrado, usando usuario existente:', userId)
         } else if (userData.message && userData.message.includes('ya está registrado')) {
-          // Si el email ya existe, buscar el usuario
-          console.log('⚠️ Email ya registrado, buscando usuario...')
-          const allUsersResponse = await fetch('/api/users')
+          // Fallback antiguo: listar usuarios (con token si existe)
+          console.log('⚠️ Email ya registrado, buscando usuario por listado...')
+          const headers2 = { 'Content-Type': 'application/json' }
+          const token2 = localStorage.getItem('apiToken')
+          if (token2) headers2['Authorization'] = `Bearer ${token2}`
+          const allUsersResponse = await fetch('/api/users', { headers: headers2 })
           if (allUsersResponse.ok) {
             const allUsersData = await allUsersResponse.json()
             if (allUsersData.success && allUsersData.data) {
@@ -331,11 +340,13 @@ export const useTicketStore = defineStore('ticket', {
         
         console.log('📦 Payload del ticket:', ticketPayload)
         
+        const ticketHeaders = { 'Content-Type': 'application/json' }
+        const ticketToken = localStorage.getItem('apiToken')
+        if (ticketToken) ticketHeaders['Authorization'] = `Bearer ${ticketToken}`
+
         const ticketResponse = await fetch('/api/tickets', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: ticketHeaders,
           body: JSON.stringify(ticketPayload)
         })
         

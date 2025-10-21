@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import jwt from 'jsonwebtoken';
 
 /**
  * Obtener todos los usuarios
@@ -9,7 +10,44 @@ export const getAllUsers = async (req, res) => {
     
     const where = {};
     if (userType) {
-      where.user_type = userType;
+       
+    console.log('✅ Login exitoso:', `"${(email || "").replace(/[\n\r]/g, "")}"`);
+
+    // Generar token JWT
+    let token = null;
+    try {
+      const jwtSecret = process.env.JWT_SECRET || 'dev-secret-key-change-in-production';
+      console.log('🔐 JWT_SECRET disponible:', jwtSecret ? 'Sí' : 'No');
+      console.log('🔐 jwt.sign es función:', typeof jwt.sign);
+      
+      token = jwt.sign(
+        { 
+          id: user.id, 
+          email: user.email,
+          userType: user.userType 
+        }, 
+        jwtSecret, 
+        { expiresIn: '7d' }
+      );
+      
+      console.log('🔑 Token JWT generado exitosamente:', token ? `Sí (${token.substring(0, 20)}...)` : 'ERROR: token es null');
+    } catch (tokenError) {
+      console.error('❌ Error al generar token JWT:', tokenError);
+      console.error('❌ Stack:', tokenError.stack);
+    }
+
+    // No devolver la contraseña
+    const userResponse = user.toJSON();
+    delete userResponse.password;
+
+    console.log('📤 Enviando respuesta con token:', token ? 'SÍ' : 'NO (NULL)');
+
+    res.json({
+      success: true,
+      message: 'Login exitoso',
+      data: userResponse,
+      token
+    });e = userType;
     }
     
     const users = await User.findAll({

@@ -641,32 +641,106 @@ export default {
       showEventForm.value = true
     }
 
-    const saveEvent = () => {
-      if (editingEvent.value) {
-        // Actualizar evento existente
-        const index = events.value.findIndex(e => e.id === editingEvent.value)
-        if (index !== -1) {
-          events.value[index] = { ...eventForm.value, id: editingEvent.value }
+    const saveEvent = async () => {
+      try {
+        // Combinar fecha y hora en un solo timestamp
+        const dateTime = new Date(`${eventForm.value.date}T${eventForm.value.time}:00`)
+        
+        // Preparar datos para el backend
+        const eventData = {
+          name: eventForm.value.name,
+          description: eventForm.value.description,
+          date: dateTime.toISOString(),
+          location: `${eventForm.value.venue}, ${eventForm.value.city}`,
+          venue: {
+            name: eventForm.value.venue,
+            address: '',
+            capacity: eventForm.value.totalCapacity,
+            city: eventForm.value.city,
+            country: 'Chile'
+          },
+          image: eventForm.value.imageUrl || 'https://via.placeholder.com/400x200',
+          category: eventForm.value.category.toLowerCase(),
+          status: 'published',
+          totalCapacity: eventForm.value.totalCapacity
         }
-      } else {
-        // Crear nuevo evento
-        const newEvent = {
-          ...eventForm.value,
-          id: Date.now(),
-          minPrice: 0 // Se calculará según los tipos de ticket
+
+        console.log('📤 Enviando datos del evento al backend:', eventData)
+
+        if (editingEvent.value) {
+          // Actualizar evento existente
+          const response = await eventApi.updateEvent(editingEvent.value, eventData)
+          
+          if (response && response.success && response.data) {
+            // Actualizar en el array local
+            const index = events.value.findIndex(e => e.id === editingEvent.value)
+            if (index !== -1) {
+              events.value[index] = {
+                id: response.data.id,
+                name: response.data.name,
+                category: response.data.category || 'Otro',
+                description: response.data.description || '',
+                date: response.data.date ? new Date(response.data.date).toISOString().split('T')[0] : '',
+                time: response.data.date ? new Date(response.data.date).toTimeString().slice(0, 5) : '',
+                venue: eventForm.value.venue,
+                city: eventForm.value.city,
+                totalCapacity: response.data.total_capacity || 0,
+                imageUrl: response.data.image || 'https://picsum.photos/400/300'
+              }
+            }
+            alert('✅ Evento actualizado correctamente')
+          }
+        } else {
+          // Crear nuevo evento
+          const response = await eventApi.createEvent(eventData)
+          
+          console.log('📦 Respuesta del servidor:', response)
+          
+          if (response && response.success && response.data) {
+            // Agregar al array local
+            const newEvent = {
+              id: response.data.id,
+              name: response.data.name,
+              category: response.data.category || 'Otro',
+              description: response.data.description || '',
+              date: response.data.date ? new Date(response.data.date).toISOString().split('T')[0] : '',
+              time: response.data.date ? new Date(response.data.date).toTimeString().slice(0, 5) : '',
+              venue: eventForm.value.venue,
+              city: eventForm.value.city,
+              totalCapacity: response.data.total_capacity || 0,
+              imageUrl: response.data.image || 'https://picsum.photos/400/300',
+              minPrice: 0
+            }
+            events.value.push(newEvent)
+            console.log('✅ Evento agregado al array local:', newEvent)
+            alert('✅ Evento creado correctamente y guardado en la base de datos')
+          } else {
+            throw new Error('La respuesta del servidor no tiene el formato esperado')
+          }
         }
-        events.value.push(newEvent)
+        
+        closeEventForm()
+      } catch (error) {
+        console.error('❌ Error al guardar evento:', error)
+        alert('❌ Error al guardar el evento: ' + error.message)
       }
-      saveEvents()
-      closeEventForm()
     }
 
-    const deleteEvent = (eventId) => {
+    const deleteEvent = async (eventId) => {
       if (confirm('¿Estás seguro de eliminar este evento? También se eliminarán todos sus tipos de ticket.')) {
-        events.value = events.value.filter(e => e.id !== eventId)
-        ticketTypes.value = ticketTypes.value.filter(tt => tt.eventId !== eventId)
-        saveEvents()
-        saveTicketTypes()
+        try {
+          // Eliminar desde la API
+          await eventApi.deleteEvent(eventId)
+          
+          // Actualizar arrays locales
+          events.value = events.value.filter(e => e.id !== eventId)
+          ticketTypes.value = ticketTypes.value.filter(tt => tt.eventId !== eventId)
+          
+          alert('✅ Evento eliminado correctamente')
+        } catch (error) {
+          console.error('Error al eliminar evento:', error)
+          alert('❌ Error al eliminar el evento: ' + error.message)
+        }
       }
     }
 

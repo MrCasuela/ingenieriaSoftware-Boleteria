@@ -6,13 +6,36 @@
 const API_BASE_URL = '/api';
 
 /**
+ * Función auxiliar para obtener el token de autenticación
+ */
+const getAuthToken = () => {
+  const token = localStorage.getItem('apiToken') || localStorage.getItem('token');
+  console.log('🔑 Token encontrado:', token ? `Sí (${token.substring(0, 20)}...)` : 'No');
+  return token;
+};
+
+/**
+ * Función auxiliar para crear headers con autenticación
+ */
+const getHeaders = () => {
+  const headers = { 'Content-Type': 'application/json' };
+  const token = getAuthToken();
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  } else {
+    console.warn('⚠️ No se encontró token para la petición');
+  }
+  
+  return headers;
+};
+
+/**
  * Obtener todos los eventos
  */
 export const getAllEvents = async () => {
   try {
-    const headers = { 'Content-Type': 'application/json' };
-    const token = localStorage.getItem('apiToken')
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getHeaders();
 
     const response = await fetch(`${API_BASE_URL}/events`, {
       method: 'GET',
@@ -36,9 +59,7 @@ export const getAllEvents = async () => {
  */
 export const getEventById = async (id) => {
   try {
-    const headers = { 'Content-Type': 'application/json' };
-    const token = localStorage.getItem('apiToken')
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getHeaders();
 
     const response = await fetch(`${API_BASE_URL}/events/${id}`, {
       method: 'GET',
@@ -62,9 +83,9 @@ export const getEventById = async (id) => {
  */
 export const createEvent = async (eventData) => {
   try {
-    const headers = { 'Content-Type': 'application/json' };
-    const token = localStorage.getItem('apiToken')
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getHeaders();
+    
+    console.log('📤 Enviando petición para crear evento:', eventData);
 
     const response = await fetch(`${API_BASE_URL}/events`, {
       method: 'POST',
@@ -74,10 +95,12 @@ export const createEvent = async (eventData) => {
 
     if (!response.ok) {
       const errorData = await response.json();
+      console.error('❌ Error del servidor:', errorData);
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('✅ Evento creado exitosamente:', data);
     return data;
   } catch (error) {
     console.error('Error al crear evento:', error);
@@ -90,9 +113,9 @@ export const createEvent = async (eventData) => {
  */
 export const updateEvent = async (id, eventData) => {
   try {
-    const headers = { 'Content-Type': 'application/json' };
-    const token = localStorage.getItem('apiToken')
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getHeaders();
+    
+    console.log(`📤 Actualizando evento ${id}:`, eventData);
 
     const response = await fetch(`${API_BASE_URL}/events/${id}`, {
       method: 'PUT',
@@ -102,10 +125,12 @@ export const updateEvent = async (id, eventData) => {
 
     if (!response.ok) {
       const errorData = await response.json();
+      console.error('❌ Error del servidor:', errorData);
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('✅ Evento actualizado exitosamente:', data);
     return data;
   } catch (error) {
     console.error(`Error al actualizar evento ${id}:`, error);
@@ -118,9 +143,9 @@ export const updateEvent = async (id, eventData) => {
  */
 export const deleteEvent = async (id) => {
   try {
-    const headers = { 'Content-Type': 'application/json' };
-    const token = localStorage.getItem('apiToken')
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getHeaders();
+    
+    console.log(`🗑️ Eliminando evento ${id}`);
 
     const response = await fetch(`${API_BASE_URL}/events/${id}`, {
       method: 'DELETE',
@@ -129,10 +154,12 @@ export const deleteEvent = async (id) => {
 
     if (!response.ok) {
       const errorData = await response.json();
+      console.error('❌ Error del servidor:', errorData);
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('✅ Evento eliminado exitosamente');
     return data;
   } catch (error) {
     console.error(`Error al eliminar evento ${id}:`, error);

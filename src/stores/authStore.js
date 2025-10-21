@@ -171,9 +171,13 @@ export const useAuthStore = defineStore('auth', {
             timestamp: Date.now()
           }))
 
-          // Guardar token si viene en la respuesta
-          if (data.token) {
-            localStorage.setItem('apiToken', data.token)
+          // Guardar token - puede venir en data.token o data.data.token
+          const token = data.token || (data.data && data.data.token)
+          if (token) {
+            localStorage.setItem('apiToken', token)
+            console.log('✅ Token guardado en localStorage:', token.substring(0, 20) + '...')
+          } else {
+            console.warn('⚠️ No se recibió token en la respuesta de login')
           }
 
           return {

@@ -32,60 +32,6 @@ export const getAllUsersAdmin = async (req, res) => {
 };
 
 /**
- * @desc    Crear un nuevo cliente
- * @route   POST /api/admin/clients
- * @access  Private/Admin
- */
-export const createClient = async (req, res) => {
-  try {
-    const { email, password, firstName, lastName, phone, document } = req.body;
-
-    // Verificar si el email ya existe
-    const existingUser = await User.findOne({ where: { email } });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'El email ya está registrado'
-      });
-    }
-
-    // Verificar si el documento ya existe
-    if (document) {
-      const existingDocument = await Cliente.findOne({ where: { document } });
-      if (existingDocument) {
-        return res.status(400).json({
-          success: false,
-          message: 'El documento/RUT ya está registrado'
-        });
-      }
-    }
-
-    // Crear nuevo cliente
-    const cliente = await Cliente.create({
-      email,
-      password: password || 'Cliente123!', // Password por defecto
-      firstName,
-      lastName,
-      phone,
-      document: document || '',
-      isActive: true
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'Cliente creado exitosamente',
-      data: cliente.toPublicJSON()
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error al crear cliente',
-      error: error.message
-    });
-  }
-};
-
-/**
  * @desc    Crear un nuevo operador
  * @route   POST /api/admin/operators
  * @access  Private/Admin

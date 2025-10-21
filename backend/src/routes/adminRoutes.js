@@ -1,7 +1,6 @@
 import express from 'express';
 import {
   getAllUsersAdmin,
-  createClient,
   createOperator,
   createAdministrator,
   updateUserRole,
@@ -23,10 +22,11 @@ router.get('/stats', getUserStats);
 // Gestión de usuarios
 router.get('/users', getAllUsersAdmin);
 
-// Crear usuarios por rol
-router.post('/clients', createClient);           // Crear clientes
-router.post('/operators', createOperator);       // Crear operadores
-router.post('/administrators', createAdministrator); // Crear administradores (solo super admin)
+// Crear operadores (cualquier admin)
+router.post('/operators', createOperator);
+
+// Crear administradores (solo super admin)
+router.post('/administrators', createAdministrator);
 
 // Actualizar rol de usuario
 router.put('/users/:id/role', updateUserRole);

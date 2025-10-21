@@ -419,6 +419,290 @@
           </table>
         </div>
       </div>
+
+      <!-- Tab: Usuarios (NUEVO) -->
+      <div v-if="activeTab === 'users'" class="tab-content">
+        <div class="section-header">
+          <h2>👥 Gestión de Usuarios y Roles</h2>
+          <div class="user-actions">
+            <button @click="showUserForm = true; userForm.role = 'Cliente'" class="btn-primary">
+              ➕ Nuevo Cliente
+            </button>
+            <button @click="showUserForm = true; userForm.role = 'Operador'" class="btn-success">
+              ➕ Nuevo Operador
+            </button>
+          </div>
+        </div>
+
+        <!-- Estadísticas de Usuarios -->
+        <div class="stats-grid" style="margin-bottom: 2rem;">
+          <div class="stat-card">
+            <div class="stat-icon">👨‍💼</div>
+            <div class="stat-info">
+              <h3>Clientes</h3>
+              <p class="stat-number">{{ users.clientes?.length || 0 }}</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🎫</div>
+            <div class="stat-info">
+              <h3>Operadores</h3>
+              <p class="stat-number">{{ users.operadores?.length || 0 }}</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🔐</div>
+            <div class="stat-info">
+              <h3>Administradores</h3>
+              <p class="stat-number">{{ users.administradores?.length || 0 }}</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-info">
+              <h3>Total Usuarios</h3>
+              <p class="stat-number">{{ totalUsers }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filters-bar">
+          <button 
+            @click="filterRole = 'all'" 
+            :class="['filter-btn', { active: filterRole === 'all' }]"
+          >
+            Todos
+          </button>
+          <button 
+            @click="filterRole = 'Cliente'" 
+            :class="['filter-btn', { active: filterRole === 'Cliente' }]"
+          >
+            👨‍💼 Clientes
+          </button>
+          <button 
+            @click="filterRole = 'Operador'" 
+            :class="['filter-btn', { active: filterRole === 'Operador' }]"
+          >
+            🎫 Operadores
+          </button>
+          <button 
+            @click="filterRole = 'Administrador'" 
+            :class="['filter-btn', { active: filterRole === 'Administrador' }]"
+          >
+            🔐 Administradores
+          </button>
+        </div>
+
+        <!-- Tabla de Usuarios -->
+        <div class="users-table-container">
+          <table class="users-table">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Nombre</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Info Adicional</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="user in filteredUsers" :key="user.id">
+                <td>{{ user.email }}</td>
+                <td>{{ user.firstName }} {{ user.lastName }}</td>
+                <td>
+                  <span :class="['role-badge', getRoleClass(user.userType)]">
+                    {{ getRoleIcon(user.userType) }} {{ user.userType }}
+                  </span>
+                </td>
+                <td>
+                  <span :class="['status-badge', user.isActive ? 'active' : 'inactive']">
+                    {{ user.isActive ? '✅ Activo' : '❌ Inactivo' }}
+                  </span>
+                </td>
+                <td class="user-extra-info">
+                  <span v-if="user.userType === 'Operador'">
+                    ID: {{ user.employeeId }} | Turno: {{ user.shift }}
+                  </span>
+                  <span v-else-if="user.userType === 'Cliente'">
+                    RUT: {{ user.document || 'N/A' }}
+                  </span>
+                  <span v-else-if="user.userType === 'Administrador'">
+                    Nivel: {{ user.adminLevel }}
+                  </span>
+                </td>
+                <td class="user-actions-cell">
+                  <button 
+                    @click="changeUserRole(user)" 
+                    class="btn-edit-small"
+                    title="Cambiar rol"
+                  >
+                    🔄
+                  </button>
+                  <button 
+                    @click="toggleUserStatus(user)" 
+                    :class="['btn-toggle-small', user.isActive ? 'btn-deactivate' : 'btn-activate']"
+                    :title="user.isActive ? 'Desactivar' : 'Activar'"
+                  >
+                    {{ user.isActive ? '🔒' : '🔓' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Formulario de Usuario (Modal) -->
+        <div v-if="showUserForm" class="modal-overlay" @click.self="closeUserForm">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>{{ editingUser ? '✏️ Editar Usuario' : '➕ Nuevo ' + userForm.role }}</h3>
+              <button @click="closeUserForm" class="btn-close">✖</button>
+            </div>
+            <form @submit.prevent="saveUser" class="user-form">
+              <div class="form-group">
+                <label>Rol *</label>
+                <select v-model="userForm.role" required :disabled="editingUser">
+                  <option value="Cliente">Cliente</option>
+                  <option value="Operador">Operador</option>
+                </select>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Email *</label>
+                  <input 
+                    v-model="userForm.email" 
+                    type="email" 
+                    required 
+                    placeholder="usuario@ejemplo.com"
+                  />
+                </div>
+                <div class="form-group" v-if="!editingUser">
+                  <label>Contraseña *</label>
+                  <input 
+                    v-model="userForm.password" 
+                    type="password" 
+                    :required="!editingUser"
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Nombre *</label>
+                  <input 
+                    v-model="userForm.firstName" 
+                    type="text" 
+                    required 
+                    placeholder="Nombre"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>Apellido *</label>
+                  <input 
+                    v-model="userForm.lastName" 
+                    type="text" 
+                    required 
+                    placeholder="Apellido"
+                  />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Teléfono *</label>
+                <input 
+                  v-model="userForm.phone" 
+                  type="tel" 
+                  required 
+                  placeholder="+56912345678"
+                />
+              </div>
+
+              <!-- Campos específicos para Cliente -->
+              <div v-if="userForm.role === 'Cliente'" class="form-group">
+                <label>RUT/Documento *</label>
+                <input 
+                  v-model="userForm.document" 
+                  type="text" 
+                  required 
+                  placeholder="12345678-9"
+                />
+              </div>
+
+              <!-- Campos específicos para Operador -->
+              <div v-if="userForm.role === 'Operador'">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>ID de Empleado</label>
+                    <input 
+                      v-model="userForm.employeeId" 
+                      type="text" 
+                      placeholder="OP-001"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label>Turno *</label>
+                    <select v-model="userForm.shift" required>
+                      <option value="mañana">Mañana</option>
+                      <option value="tarde">Tarde</option>
+                      <option value="noche">Noche</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button type="button" @click="closeUserForm" class="btn-cancel">
+                  Cancelar
+                </button>
+                <button type="submit" class="btn-primary">
+                  {{ editingUser ? 'Actualizar' : 'Crear' }} Usuario
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Modal de Cambio de Rol -->
+        <div v-if="showRoleChangeModal" class="modal-overlay" @click.self="showRoleChangeModal = false">
+          <div class="modal-content modal-small">
+            <div class="modal-header">
+              <h3>🔄 Cambiar Rol de Usuario</h3>
+              <button @click="showRoleChangeModal = false" class="btn-close">✖</button>
+            </div>
+            <div class="modal-body">
+              <p><strong>Usuario:</strong> {{ selectedUser?.email }}</p>
+              <p><strong>Rol actual:</strong> {{ selectedUser?.userType }}</p>
+              
+              <div class="form-group">
+                <label>Nuevo Rol:</label>
+                <select v-model="newRole" class="form-control">
+                  <option value="Cliente">Cliente</option>
+                  <option value="Operador">Operador</option>
+                  <option value="Administrador" v-if="authStore.user?.adminLevel === 'super'">
+                    Administrador (Solo Super Admin)
+                  </option>
+                </select>
+              </div>
+
+              <div class="alert alert-warning">
+                ⚠️ <strong>Advertencia:</strong> Cambiar el rol modificará los permisos del usuario.
+              </div>
+            </div>
+            <div class="form-actions">
+              <button @click="showRoleChangeModal = false" class="btn-cancel">
+                Cancelar
+              </button>
+              <button @click="confirmRoleChange" class="btn-primary">
+                Confirmar Cambio
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -447,11 +731,30 @@ export default {
     // Data
     const events = ref([])
     const ticketTypes = ref([])
+    const users = ref({ clientes: [], operadores: [], administradores: [] })
+    const showUserForm = ref(false)
+    const showRoleChangeModal = ref(false)
+    const editingUser = ref(null)
+    const selectedUser = ref(null)
+    const newRole = ref('')
+    const filterRole = ref('all')
+    const userForm = ref({
+      role: 'Cliente',
+      email: '',
+      password: '',
+      firstName: '',
+      lastName: '',
+      phone: '',
+      document: '',
+      employeeId: '',
+      shift: 'mañana'
+    })
 
     // Tabs
     const tabs = [
       { id: 'events', label: 'Eventos', icon: '🎭' },
       { id: 'ticketTypes', label: 'Tipos de Ticket', icon: '🎫' },
+      { id: 'users', label: 'Usuarios', icon: '👥' },
       { id: 'stats', label: 'Estadísticas', icon: '📈' }
     ]
 
@@ -495,6 +798,24 @@ export default {
       return ticketTypes.value.reduce((sum, tt) => {
         return sum + (tt.price * tt.capacity)
       }, 0)
+    })
+
+    // Computed para usuarios
+    const totalUsers = computed(() => {
+      return (users.value.clientes?.length || 0) + 
+             (users.value.operadores?.length || 0) + 
+             (users.value.administradores?.length || 0)
+    })
+
+    const filteredUsers = computed(() => {
+      const allUsers = [
+        ...(users.value.clientes || []),
+        ...(users.value.operadores || []),
+        ...(users.value.administradores || [])
+      ]
+      
+      if (filterRole.value === 'all') return allUsers
+      return allUsers.filter(u => u.userType === filterRole.value)
     })
 
     // Methods
@@ -550,6 +871,54 @@ export default {
       } catch (error) {
         console.error('Error al cargar eventos:', error)
         events.value = []
+      }
+
+      // Cargar usuarios
+      await loadUsers()
+    }
+
+    const loadUsers = async () => {
+      try {
+        console.log('==================== INICIO LOAD USERS ====================')
+        const token = localStorage.getItem('apiToken')
+        console.log('Token en loadUsers:', token ? 'Existe' : 'NO EXISTE')
+        
+        if (!token) {
+          console.error('❌ No hay token de autenticación en loadUsers')
+          return
+        }
+
+        console.log('Llamando a /api/admin/users...')
+        const response = await fetch('/api/admin/users', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        console.log('Response status:', response.status)
+        console.log('Response ok:', response.ok)
+
+        if (response.ok) {
+          const data = await response.json()
+          console.log('Data recibida:', data)
+          
+          if (data.success) {
+            users.value = data.data
+            console.log('✅ Usuarios cargados:', totalUsers.value)
+          } else {
+            console.error('❌ Success = false:', data)
+          }
+        } else {
+          const errorText = await response.text()
+          console.error('❌ Error al cargar usuarios. Status:', response.status)
+          console.error('❌ Error text:', errorText)
+        }
+        console.log('==================== FIN LOAD USERS ====================')
+      } catch (error) {
+        console.error('==================== ERROR EN LOAD USERS ====================')
+        console.error('Error completo:', error)
+        console.error('Error message:', error.message)
       }
     }
 
@@ -814,6 +1183,194 @@ export default {
       }
     }
 
+    // ==========================================
+    // FUNCIONES PARA GESTIÓN DE USUARIOS
+    // ==========================================
+    
+    const getRoleClass = (role) => {
+      const classes = {
+        'Cliente': 'role-client',
+        'Operador': 'role-operator',
+        'Administrador': 'role-admin'
+      }
+      return classes[role] || 'role-default'
+    }
+
+    const getRoleIcon = (role) => {
+      const icons = {
+        'Cliente': '👨‍💼',
+        'Operador': '🎫',
+        'Administrador': '🔐'
+      }
+      return icons[role] || '👤'
+    }
+
+    const closeUserForm = () => {
+      showUserForm.value = false
+      editingUser.value = null
+      userForm.value = {
+        role: 'Cliente',
+        email: '',
+        password: '',
+        firstName: '',
+        lastName: '',
+        phone: '',
+        document: '',
+        employeeId: '',
+        shift: 'mañana'
+      }
+    }
+
+    const saveUser = async () => {
+      try {
+        console.log('==================== INICIO SAVE USER ====================')
+        const token = localStorage.getItem('apiToken')
+        console.log('Token obtenido:', token ? 'Existe' : 'NO EXISTE')
+        console.log('Token length:', token?.length)
+        
+        if (!token) {
+          console.error('❌ No hay token de autenticación')
+          alert('❌ Error: No hay token de autenticación. Por favor, cierre sesión e inicie sesión nuevamente.')
+          return
+        }
+
+        let endpoint = ''
+        let userData = {
+          email: userForm.value.email,
+          password: userForm.value.password,
+          firstName: userForm.value.firstName,
+          lastName: userForm.value.lastName,
+          phone: userForm.value.phone
+        }
+
+        // Configurar endpoint y datos según el rol
+        if (userForm.value.role === 'Cliente') {
+          endpoint = '/api/admin/clients'
+          userData.document = userForm.value.document
+        } else if (userForm.value.role === 'Operador') {
+          endpoint = '/api/admin/operators'
+          userData.employeeId = userForm.value.employeeId || `OP-${Date.now()}`
+          userData.shift = userForm.value.shift
+        }
+
+        console.log('Endpoint:', endpoint)
+        console.log('User Data:', userData)
+        console.log('Enviando petición...')
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(userData)
+        })
+
+        console.log('Response status:', response.status)
+        console.log('Response ok:', response.ok)
+        
+        const data = await response.json()
+        console.log('Response data:', data)
+
+        if (response.ok && data.success) {
+          console.log('✅ Usuario creado exitosamente')
+          alert(`✅ ${userForm.value.role} creado exitosamente`)
+          closeUserForm()
+          await loadUsers()
+        } else {
+          console.error('❌ Error en respuesta:', data)
+          alert(`❌ Error: ${data.message || 'Error desconocido'}`)
+        }
+        console.log('==================== FIN SAVE USER ====================')
+      } catch (error) {
+        console.error('==================== ERROR EN SAVE USER ====================')
+        console.error('Error completo:', error)
+        console.error('Error name:', error.name)
+        console.error('Error message:', error.message)
+        console.error('Error stack:', error.stack)
+        alert(`❌ Error al crear usuario: ${error.message}`)
+      }
+    }
+
+    const changeUserRole = (user) => {
+      selectedUser.value = user
+      newRole.value = user.userType
+      showRoleChangeModal.value = true
+    }
+
+    const confirmRoleChange = async () => {
+      try {
+        const token = localStorage.getItem('apiToken')
+        if (!token) {
+          alert('No hay token de autenticación')
+          return
+        }
+
+        if (newRole.value === selectedUser.value.userType) {
+          alert('El usuario ya tiene ese rol')
+          return
+        }
+
+        const response = await fetch(`/api/admin/users/${selectedUser.value.id}/role`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ newRole: newRole.value })
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.success) {
+          alert(`✅ Rol cambiado exitosamente de ${selectedUser.value.userType} a ${newRole.value}`)
+          showRoleChangeModal.value = false
+          selectedUser.value = null
+          await loadUsers()
+        } else {
+          alert(`❌ Error: ${data.message}`)
+        }
+      } catch (error) {
+        console.error('Error al cambiar rol:', error)
+        alert('❌ Error al cambiar rol')
+      }
+    }
+
+    const toggleUserStatus = async (user) => {
+      try {
+        const token = localStorage.getItem('apiToken')
+        if (!token) {
+          alert('No hay token de autenticación')
+          return
+        }
+
+        const action = user.isActive ? 'desactivar' : 'activar'
+        if (!confirm(`¿Está seguro que desea ${action} a ${user.email}?`)) {
+          return
+        }
+
+        const response = await fetch(`/api/admin/users/${user.id}/toggle-status`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.success) {
+          alert(`✅ Usuario ${action}do exitosamente`)
+          await loadUsers()
+        } else {
+          alert(`❌ Error: ${data.message}`)
+        }
+      } catch (error) {
+        console.error('Error al cambiar estado:', error)
+        alert('❌ Error al cambiar estado del usuario')
+      }
+    }
+
     const handleLogout = () => {
       authStore.logout()
       router.push('/operator/login')
@@ -862,7 +1419,27 @@ export default {
       editTicketType,
       saveTicketType,
       deleteTicketType,
-      handleLogout
+      handleLogout,
+      // Usuarios
+      users,
+      showUserForm,
+      showRoleChangeModal,
+      editingUser,
+      selectedUser,
+      newRole,
+      filterRole,
+      userForm,
+      totalUsers,
+      filteredUsers,
+      getRoleClass,
+      getRoleIcon,
+      closeUserForm,
+      saveUser,
+      changeUserRole,
+      confirmRoleChange,
+      toggleUserStatus,
+      loadUsers,
+      authStore
     }
   }
 }
@@ -1537,5 +2114,214 @@ export default {
   .stats-table-container {
     overflow-x: auto;
   }
+}
+
+/* ========================================
+   ESTILOS PARA GESTIÓN DE USUARIOS
+   ======================================== */
+
+.user-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(56, 239, 125, 0.2);
+}
+
+.btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(56, 239, 125, 0.3);
+}
+
+.filters-bar {
+  display: flex;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 0.75rem 1.5rem;
+  border: 2px solid #e0e0e0;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.filter-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.filter-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+}
+
+.users-table-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.users-table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.users-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+}
+
+.users-table tbody tr {
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s ease;
+}
+
+.users-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.users-table td {
+  padding: 1rem;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.role-client {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.role-operator {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.role-admin {
+  background: #fce4ec;
+  color: #c2185b;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.status-badge.active {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.inactive {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.user-extra-info {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.user-actions-cell {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-edit-small,
+.btn-toggle-small {
+  padding: 0.5rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.3s ease;
+}
+
+.btn-edit-small {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.btn-edit-small:hover {
+  background: #f57c00;
+  color: white;
+  transform: scale(1.1);
+}
+
+.btn-toggle-small.btn-deactivate {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.btn-toggle-small.btn-deactivate:hover {
+  background: #c62828;
+  color: white;
+  transform: scale(1.1);
+}
+
+.btn-toggle-small.btn-activate {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.btn-toggle-small.btn-activate:hover {
+  background: #2e7d32;
+  color: white;
+  transform: scale(1.1);
+}
+
+.user-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.modal-small {
+  max-width: 500px;
+}
+
+.alert {
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.alert-warning {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  color: #856404;
 }
 </style>

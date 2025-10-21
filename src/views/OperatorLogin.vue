@@ -89,25 +89,41 @@ export default {
       loading.value = true
 
       try {
+        console.log('==================== INICIO LOGIN ====================')
+        console.log('Email:', username.value)
+        
         // Intentar login con el backend (automáticamente detecta el tipo de usuario)
         const result = await authStore.loginWithAPI(username.value, password.value)
+        
+        console.log('Resultado del login:', result)
+        
+        // Verificar si se guardó el token
+        const savedToken = localStorage.getItem('apiToken')
+        console.log('Token guardado después del login:', savedToken ? 'SÍ (length: ' + savedToken.length + ')' : 'NO')
 
         if (result.success) {
+          console.log('✅ Login exitoso. Tipo de usuario:', result.userType)
+          
           // Redirigir según el tipo de usuario retornado
           if (result.userType === 'Administrador') {
+            console.log('Redirigiendo a /admin/panel...')
             router.push('/admin/panel')
           } else if (result.userType === 'Operador') {
+            console.log('Redirigiendo a /operator/panel...')
             router.push('/operator/panel')
           } else {
             errorMessage.value = 'Tipo de usuario no autorizado para esta sección'
             loading.value = false
           }
         } else {
+          console.error('❌ Login fallido:', result.message)
           errorMessage.value = result.message || 'Usuario o contraseña incorrectos'
           loading.value = false
         }
+        console.log('==================== FIN LOGIN ====================')
       } catch (error) {
-        console.error('Error en login:', error)
+        console.error('==================== ERROR EN LOGIN ====================')
+        console.error('Error completo:', error)
         errorMessage.value = 'Error al conectar con el servidor. Intente nuevamente.'
         loading.value = false
       }

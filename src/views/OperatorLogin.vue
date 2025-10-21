@@ -1,0 +1,309 @@
+<template>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="icon">🔐</div>
+        <h1>Control de Acceso</h1>
+        <p>Ingreso al Sistema</p>
+      </div>
+
+      <form @submit.prevent="handleLogin" class="login-form">
+        <div v-if="errorMessage" class="error-alert">
+          {{ errorMessage }}
+        </div>
+
+        <div class="form-group">
+          <label for="username">Usuario</label>
+          <input
+            type="email"
+            id="username"
+            v-model="username"
+            placeholder="Ingrese su email"
+            required
+            autocomplete="username"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Contraseña</label>
+          <input
+            type="password"
+            id="password"
+            v-model="password"
+            placeholder="Ingrese su contraseña"
+            required
+            autocomplete="current-password"
+          />
+        </div>
+
+        <button type="submit" class="btn-login" :disabled="loading">
+          <span v-if="!loading">Iniciar Sesión</span>
+          <span v-else>Verificando...</span>
+        </button>
+      </form>
+
+      <div class="login-info">
+        <h3>Información de Acceso:</h3>
+        <div class="credentials-section">
+          <h4>👨‍💼 Administradores:</h4>
+          <ul>
+            <li><strong>Email:</strong> admin1@ticketvue.com | <strong>Contraseña:</strong> admin123</li>
+            <li><strong>Email:</strong> admin2@ticketvue.com | <strong>Contraseña:</strong> admin456</li>
+          </ul>
+        </div>
+        <div class="credentials-section">
+          <h4>👤 Operadores:</h4>
+          <ul>
+            <li><strong>Email:</strong> operador1@ticketvue.com | <strong>Contraseña:</strong> oper123</li>
+            <li><strong>Email:</strong> operador2@ticketvue.com | <strong>Contraseña:</strong> oper456</li>
+          </ul>
+        </div>
+        <p class="note">Esta información es solo para desarrollo</p>
+      </div>
+
+      <div class="back-link">
+        <router-link to="/">← Volver a la página principal</router-link>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/authStore'
+
+export default {
+  name: 'OperatorLogin',
+  setup() {
+    const router = useRouter()
+    const authStore = useAuthStore()
+    
+    const username = ref('')
+    const password = ref('')
+    const errorMessage = ref('')
+    const loading = ref(false)
+
+    const handleLogin = async () => {
+      errorMessage.value = ''
+      loading.value = true
+
+      try {
+        console.log('==================== INICIO LOGIN ====================')
+        console.log('Email:', username.value)
+        
+        // Intentar login con el backend (automáticamente detecta el tipo de usuario)
+        const result = await authStore.loginWithAPI(username.value, password.value)
+        
+        console.log('Resultado del login:', result)
+        
+        // Verificar si se guardó el token
+        const savedToken = localStorage.getItem('apiToken')
+        console.log('Token guardado después del login:', savedToken ? 'SÍ (length: ' + savedToken.length + ')' : 'NO')
+
+        if (result.success) {
+          console.log('✅ Login exitoso. Tipo de usuario:', result.userType)
+          
+          // Redirigir según el tipo de usuario retornado
+          if (result.userType === 'Administrador') {
+            console.log('Redirigiendo a /admin/panel...')
+            router.push('/admin/panel')
+          } else if (result.userType === 'Operador') {
+            console.log('Redirigiendo a /operator/panel...')
+            router.push('/operator/panel')
+          } else {
+            errorMessage.value = 'Tipo de usuario no autorizado para esta sección'
+            loading.value = false
+          }
+        } else {
+          console.error('❌ Login fallido:', result.message)
+          errorMessage.value = result.message || 'Usuario o contraseña incorrectos'
+          loading.value = false
+        }
+        console.log('==================== FIN LOGIN ====================')
+      } catch (error) {
+        console.error('==================== ERROR EN LOGIN ====================')
+        console.error('Error completo:', error)
+        errorMessage.value = 'Error al conectar con el servidor. Intente nuevamente.'
+        loading.value = false
+      }
+    }
+
+    return {
+      username,
+      password,
+      errorMessage,
+      loading,
+      handleLogin
+    }
+  }
+}
+</script>
+
+<style scoped>
+.login-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-card {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 450px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.login-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 40px 30px;
+  text-align: center;
+}
+
+.icon {
+  font-size: 64px;
+  margin-bottom: 15px;
+}
+
+.login-header h1 {
+  font-size: 28px;
+  margin-bottom: 5px;
+}
+
+.login-header p {
+  opacity: 0.9;
+  font-size: 14px;
+}
+
+.login-form {
+  padding: 30px;
+}
+
+.error-alert {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 12px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.btn-login {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn-login:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-login:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.login-info {
+  background: #fff3cd;
+  border-top: 4px solid #ffc107;
+  padding: 20px 30px;
+}
+
+.login-info h3 {
+  font-size: 16px;
+  color: #856404;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.credentials-section {
+  margin-bottom: 15px;
+}
+
+.credentials-section h4 {
+  font-size: 14px;
+  color: #856404;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.login-info ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px 0;
+}
+
+.login-info li {
+  color: #856404;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #856404;
+  font-style: italic;
+}
+
+.back-link {
+  padding: 20px 30px;
+  text-align: center;
+}
+
+.back-link a {
+  color: #667eea;
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.3s;
+}
+
+.back-link a:hover {
+  color: #764ba2;
+}
+</style>

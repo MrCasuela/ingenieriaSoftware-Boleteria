@@ -11,7 +11,7 @@ Aplicación web completa que permite:
 - **Base de datos MySQL**: Almacenamiento persistente con transacciones atómicas
 
 ## 🏗️ Arquitectura
-
+:) 
 ### Frontend (Vue.js 3)
 - Framework: Vue 3 + Composition API
 - State Management: Pinia

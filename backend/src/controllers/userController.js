@@ -1,4 +1,6 @@
 import User from '../models/User.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 /**
  * Obtener todos los usuarios
@@ -242,8 +244,8 @@ export const loginUser = async (req, res) => {
       });
     }
     
-    // Verificar contraseña (comparación directa sin hash)
-    const isValidPassword = password === user.password;
+    // Verificar contraseña usando bcrypt
+    const isValidPassword = await bcrypt.compare(password, user.password);
     
     if (!isValidPassword) {
       console.log('❌ Contraseña inválida para:', `"${(email || "").replace(/[\n\r]/g, "")}"`);
@@ -265,8 +267,7 @@ export const loginUser = async (req, res) => {
     console.log('✅ Login exitoso:', `"${(email || "").replace(/[\\n\\r]/g, "")}"`);
 
     // Generar token JWT
-    const jwt = await import('jsonwebtoken');
-    const token = jwt.sign ? jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '7d' }) : null;
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '7d' });
 
     // No devolver la contraseña
     const userResponse = user.toJSON();

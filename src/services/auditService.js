@@ -6,9 +6,9 @@
 export class AuditService {
   
   /**
-   * Registra una validación de ticket
+   * Registra una validación de ticket (localStorage Y base de datos)
    */
-  static logValidation(ticketCode, operator, success, details = {}) {
+  static async logValidation(ticketCode, operator, success, details = {}) {
     const audits = JSON.parse(localStorage.getItem('scanAudits') || '[]')
     
     const auditEntry = {
@@ -23,7 +23,7 @@ export class AuditService {
         message: details.message || '',
         ticketInfo: details.ticketInfo || null,
         fraudDetected: details.fraudDetected || false,
-        validationType: details.validationType || 'manual' // 'qr' o 'manual'
+        validationType: details.validationType || 'manual' // 'qr', 'manual', 'rut'
       }
     }
 
@@ -36,9 +36,81 @@ export class AuditService {
 
     localStorage.setItem('scanAudits', JSON.stringify(audits))
     
-    console.log('📋 Auditoría registrada:', auditEntry)
+    console.log('📋 Auditoría registrada (local):', auditEntry)
+    
+    // NUEVO: También registrar en la base de datos
+    try {
+      await this.logToDatabase(auditEntry);
+    } catch (error) {
+      console.error('⚠️ Error al registrar en BD:', error);
+      // No fallar si el registro en BD falla, el localStorage es backup
+    }
     
     return auditEntry
+  }
+
+  /**
+   * Registra la auditoría en la base de datos
+   */
+  static async logToDatabase(auditEntry) {
+    try {
+      const ticketInfo = auditEntry.details.ticketInfo;
+      
+      const payload = {
+        ticket_code: auditEntry.ticketCode,
+        operator_name: auditEntry.operator,
+        operator_email: localStorage.getItem('userEmail') || null,
+        validation_result: auditEntry.success ? 'approved' : 'rejected',
+        validation_type: auditEntry.details.validationType || 'manual',
+        event_id: ticketInfo?.eventoId || null,
+        event_name: ticketInfo?.evento || null,
+        ticket_type: ticketInfo?.tipo || null,
+        ticket_category: this.categorizeTicket(ticketInfo?.tipo),
+        user_name: ticketInfo?.nombre || null,
+        user_rut: ticketInfo?.rut || null,
+        message: auditEntry.details.message,
+        rejection_reason: auditEntry.success ? null : auditEntry.details.message,
+        fraud_detected: auditEntry.details.fraudDetected || false,
+        metadata: {
+          deviceInfo: auditEntry.deviceFingerprint,
+          localAuditId: auditEntry.id
+        },
+        timestamp: new Date(auditEntry.timestamp)
+      };
+
+      const response = await fetch('/api/audit/log', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        console.log('✅ Auditoría guardada en base de datos');
+      } else {
+        console.warn('⚠️ No se pudo guardar en BD:', await response.text());
+      }
+    } catch (error) {
+      console.error('❌ Error al guardar auditoría en BD:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Categoriza el tipo de ticket para estadísticas
+   */
+  static categorizeTicket(ticketType) {
+    if (!ticketType) return 'other';
+    
+    const type = ticketType.toLowerCase();
+    
+    if (type.includes('vip')) return 'vip';
+    if (type.includes('premium')) return 'premium';
+    if (type.includes('general')) return 'general';
+    if (type.includes('normal') || type.includes('estándar')) return 'normal';
+    
+    return 'other';
   }
 
   /**
@@ -61,9 +133,42 @@ export class AuditService {
   }
 
   /**
-   * Obtiene el historial de auditorías
+   * Obtiene el historial de auditorías desde el backend
    */
-  static getAuditHistory(filters = {}) {
+  static async getAuditHistory(filters = {}) {
+    try {
+      const params = new URLSearchParams();
+      
+      if (filters.eventId) params.append('eventId', filters.eventId);
+      if (filters.operator) params.append('operator', filters.operator);
+      if (filters.validationType) params.append('validationType', filters.validationType);
+      if (filters.validationResult) params.append('validationResult', filters.validationResult);
+      if (filters.startDate) params.append('startDate', filters.startDate);
+      if (filters.endDate) params.append('endDate', filters.endDate);
+      if (filters.page) params.append('page', filters.page);
+      if (filters.limit) params.append('limit', filters.limit);
+
+      const response = await fetch(`/api/audit/logs?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error('Error al obtener historial de auditorías');
+      }
+
+      const data = await response.json();
+      console.log('📊 Historial obtenido desde BD:', data);
+      return data;
+      
+    } catch (error) {
+      console.error('❌ Error al obtener historial:', error);
+      // Fallback a localStorage si falla el backend
+      return this.getAuditHistoryLocal(filters);
+    }
+  }
+
+  /**
+   * Obtiene el historial local (fallback)
+   */
+  static getAuditHistoryLocal(filters = {}) {
     let audits = JSON.parse(localStorage.getItem('scanAudits') || '[]')
 
     // Aplicar filtros
@@ -86,15 +191,52 @@ export class AuditService {
     }
 
     // Ordenar por timestamp descendente (más reciente primero)
-    return audits.sort((a, b) => b.timestamp - a.timestamp)
+    const sorted = audits.sort((a, b) => b.timestamp - a.timestamp);
+    
+    return {
+      logs: sorted,
+      pagination: {
+        total: sorted.length,
+        page: 1,
+        totalPages: 1
+      }
+    };
   }
 
   /**
-   * Obtiene estadísticas de validaciones
+   * Obtiene estadísticas desde el backend
    */
-  static getStatistics(operator = null) {
+  static async getStatistics(filters = {}) {
+    try {
+      const params = new URLSearchParams();
+      
+      if (filters.eventId) params.append('eventId', filters.eventId);
+      if (filters.startDate) params.append('startDate', filters.startDate);
+      if (filters.endDate) params.append('endDate', filters.endDate);
+
+      const response = await fetch(`/api/audit/stats?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error('Error al obtener estadísticas');
+      }
+
+      const data = await response.json();
+      console.log('📈 Estadísticas obtenidas desde BD:', data);
+      return data;
+      
+    } catch (error) {
+      console.error('❌ Error al obtener estadísticas:', error);
+      // Fallback a localStorage si falla el backend
+      return this.getStatisticsLocal(filters.operator);
+    }
+  }
+
+  /**
+   * Obtiene estadísticas locales (fallback)
+   */
+  static getStatisticsLocal(operator = null) {
     const audits = operator 
-      ? this.getAuditHistory({ operator })
+      ? this.getAuditHistoryLocal({ operator }).logs
       : JSON.parse(localStorage.getItem('scanAudits') || '[]')
 
     const total = audits.length
@@ -115,6 +257,70 @@ export class AuditService {
       successRate: total > 0 ? ((successful / total) * 100).toFixed(2) : 0,
       lastHour,
       lastDay
+    }
+  }
+
+  /**
+   * Genera reporte PDF desde el backend
+   */
+  static async generatePDFReport(eventId, filters = {}) {
+    try {
+      const payload = {
+        eventId,
+        startDate: filters.startDate,
+        endDate: filters.endDate
+      };
+
+      const response = await fetch('/api/audit/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al generar reporte PDF');
+      }
+
+      // Descargar el PDF
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `reporte-auditoria-${eventId}-${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      console.log('✅ Reporte PDF generado y descargado');
+      return true;
+      
+    } catch (error) {
+      console.error('❌ Error al generar PDF:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene reporte detallado de un evento
+   */
+  static async getEventReport(eventId) {
+    try {
+      const response = await fetch(`/api/audit/report/${eventId}`);
+      
+      if (!response.ok) {
+        throw new Error('Error al obtener reporte del evento');
+      }
+
+      const data = await response.json();
+      console.log('📑 Reporte del evento obtenido:', data);
+      return data;
+      
+    } catch (error) {
+      console.error('❌ Error al obtener reporte:', error);
+      throw error;
     }
   }
 

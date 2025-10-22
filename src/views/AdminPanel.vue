@@ -703,6 +703,231 @@
           </div>
         </div>
       </div>
+
+      <!-- Tab: Historial de Auditoría -->
+      <div v-if="activeTab === 'history'" class="tab-content">
+        <div class="section-header">
+          <h2>📋 Historial de Auditoría y Validaciones</h2>
+          <div class="history-actions">
+            <button @click="refreshAuditData" class="btn-info" :disabled="loadingAudit">
+              🔄 {{ loadingAudit ? 'Actualizando...' : 'Actualizar' }}
+            </button>
+            <button @click="generatePDFReport" class="btn-primary" :disabled="!auditStats.total || generatingPDF">
+              📄 {{ generatingPDF ? 'Generando PDF...' : 'Generar Reporte PDF' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Estadísticas Generales -->
+        <div class="stats-grid" style="margin-bottom: 2rem;">
+          <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-info">
+              <h3>Validaciones Exitosas</h3>
+              <p class="stat-number">{{ auditStats.approved || 0 }}</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">❌</div>
+            <div class="stat-info">
+              <h3>Validaciones Rechazadas</h3>
+              <p class="stat-number">{{ auditStats.rejected || 0 }}</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">⚠️</div>
+            <div class="stat-info">
+              <h3>Errores</h3>
+              <p class="stat-number">{{ auditStats.errors || 0 }}</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🚨</div>
+            <div class="stat-info">
+              <h3>Fraudes Detectados</h3>
+              <p class="stat-number">{{ auditStats.frauds || 0 }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estadísticas por Tipo de Validación -->
+        <div class="audit-breakdown">
+          <div class="breakdown-card">
+            <h3>📊 Por Tipo de Validación</h3>
+            <div class="breakdown-items">
+              <div class="breakdown-item">
+                <span class="breakdown-label">📱 Escaneo QR</span>
+                <span class="breakdown-value">{{ auditStats.byType?.qr || 0 }}</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="breakdown-label">⌨️ Ingreso Manual</span>
+                <span class="breakdown-value">{{ auditStats.byType?.manual || 0 }}</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="breakdown-label">👤 Por RUT</span>
+                <span class="breakdown-value">{{ auditStats.byType?.rut || 0 }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="breakdown-card">
+            <h3>🎫 Por Categoría de Ticket</h3>
+            <div class="breakdown-items">
+              <div class="breakdown-item">
+                <span class="breakdown-label">🎟️ Normal</span>
+                <span class="breakdown-value">{{ auditStats.byCategory?.normal || 0 }}</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="breakdown-label">⭐ VIP</span>
+                <span class="breakdown-value">{{ auditStats.byCategory?.vip || 0 }}</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="breakdown-label">👥 General</span>
+                <span class="breakdown-value">{{ auditStats.byCategory?.general || 0 }}</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="breakdown-label">💎 Premium</span>
+                <span class="breakdown-value">{{ auditStats.byCategory?.premium || 0 }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtros de Búsqueda -->
+        <div class="audit-filters">
+          <h3>🔍 Filtros de Búsqueda</h3>
+          <div class="filters-grid">
+            <div class="filter-group">
+              <label>Evento:</label>
+              <select v-model="auditFilters.eventId">
+                <option value="">Todos los eventos</option>
+                <option v-for="event in events" :key="event.id" :value="event.id">
+                  {{ event.name }}
+                </option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Tipo de Validación:</label>
+              <select v-model="auditFilters.validationType">
+                <option value="">Todos</option>
+                <option value="qr">📱 Escaneo QR</option>
+                <option value="manual">⌨️ Ingreso Manual</option>
+                <option value="rut">👤 Por RUT</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Resultado:</label>
+              <select v-model="auditFilters.validationResult">
+                <option value="">Todos</option>
+                <option value="approved">✅ Aprobados</option>
+                <option value="rejected">❌ Rechazados</option>
+                <option value="error">⚠️ Errores</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Operador:</label>
+              <input 
+                v-model="auditFilters.operator" 
+                type="text" 
+                placeholder="Nombre del operador..."
+              />
+            </div>
+            <div class="filter-group">
+              <label>Desde:</label>
+              <input v-model="auditFilters.startDate" type="date" />
+            </div>
+            <div class="filter-group">
+              <label>Hasta:</label>
+              <input v-model="auditFilters.endDate" type="date" />
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button @click="applyAuditFilters" class="btn-primary">
+              🔍 Buscar
+            </button>
+            <button @click="clearAuditFilters" class="btn-secondary">
+              🗑️ Limpiar Filtros
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabla de Registros de Auditoría -->
+        <div class="audit-table-container">
+          <h3>📝 Registros de Validaciones ({{ auditLogs.length }} registros)</h3>
+          
+          <div v-if="loadingAudit" class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Cargando historial...</p>
+          </div>
+
+          <div v-else-if="auditLogs.length === 0" class="no-data">
+            <p>📭 No hay registros de auditoría que coincidan con los filtros.</p>
+          </div>
+
+          <table v-else class="audit-table">
+            <thead>
+              <tr>
+                <th>Fecha/Hora</th>
+                <th>Código Ticket</th>
+                <th>Operador</th>
+                <th>Evento</th>
+                <th>Tipo</th>
+                <th>Categoría</th>
+                <th>Resultado</th>
+                <th>Mensaje</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="log in auditLogs" :key="log.id">
+                <td>{{ formatDateTime(log.timestamp) }}</td>
+                <td><code>{{ log.ticket_code }}</code></td>
+                <td>{{ log.operator_name }}</td>
+                <td>{{ log.event_name || 'N/A' }}</td>
+                <td>
+                  <span class="type-badge" :class="'type-' + log.validation_type">
+                    {{ getValidationTypeLabel(log.validation_type) }}
+                  </span>
+                </td>
+                <td>
+                  <span class="category-badge" :class="'category-' + log.ticket_category">
+                    {{ log.ticket_category || 'N/A' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="result-badge" :class="'result-' + log.validation_result">
+                    {{ getValidationResultLabel(log.validation_result) }}
+                  </span>
+                </td>
+                <td class="message-cell">
+                  {{ log.message }}
+                  <span v-if="log.fraud_detected" class="fraud-badge">🚨 FRAUDE</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Paginación -->
+          <div v-if="auditPagination.totalPages > 1" class="pagination">
+            <button 
+              @click="goToAuditPage(auditPagination.page - 1)"
+              :disabled="auditPagination.page === 1"
+              class="btn-pagination"
+            >
+              ← Anterior
+            </button>
+            <span class="pagination-info">
+              Página {{ auditPagination.page }} de {{ auditPagination.totalPages }}
+            </span>
+            <button 
+              @click="goToAuditPage(auditPagination.page + 1)"
+              :disabled="auditPagination.page >= auditPagination.totalPages"
+              class="btn-pagination"
+            >
+              Siguiente →
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -713,6 +938,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import * as ticketTypeApi from '../services/ticketTypeApiService'
 import * as eventApi from '../services/eventApiService'
+import { AuditService } from '../services/auditService'
 
 export default {
   name: 'AdminPanel',
@@ -750,12 +976,42 @@ export default {
       shift: 'mañana'
     })
 
+    // Audit/History State
+    const auditLogs = ref([])
+    const auditStats = ref({
+      total: 0,
+      approved: 0,
+      rejected: 0,
+      errors: 0,
+      frauds: 0,
+      byType: { qr: 0, manual: 0, rut: 0 },
+      byCategory: { normal: 0, vip: 0, general: 0, premium: 0, other: 0 }
+    })
+    const auditFilters = ref({
+      eventId: '',
+      validationType: '',
+      validationResult: '',
+      operator: '',
+      startDate: '',
+      endDate: '',
+      page: 1,
+      limit: 50
+    })
+    const auditPagination = ref({
+      page: 1,
+      totalPages: 1,
+      total: 0
+    })
+    const loadingAudit = ref(false)
+    const generatingPDF = ref(false)
+
     // Tabs
     const tabs = [
       { id: 'events', label: 'Eventos', icon: '🎭' },
       { id: 'ticketTypes', label: 'Tipos de Ticket', icon: '🎫' },
       { id: 'users', label: 'Usuarios', icon: '👥' },
-      { id: 'stats', label: 'Estadísticas', icon: '📈' }
+      { id: 'stats', label: 'Estadísticas', icon: '📈' },
+      { id: 'history', label: 'Historial', icon: '📋' }
     ]
 
     // Event Form
@@ -1380,9 +1636,151 @@ export default {
       router.push('/')
     }
 
+    // ==================== FUNCIONES DE AUDITORÍA ====================
+    
+    /**
+     * Carga los datos de auditoría desde el backend
+     */
+    const loadAuditData = async () => {
+      loadingAudit.value = true
+      try {
+        // Cargar logs con filtros
+        const logsResponse = await AuditService.getAuditHistory(auditFilters.value)
+        auditLogs.value = logsResponse.logs || []
+        auditPagination.value = logsResponse.pagination || { page: 1, totalPages: 1, total: 0 }
+        
+        // Cargar estadísticas
+        const statsFilters = {
+          eventId: auditFilters.value.eventId,
+          startDate: auditFilters.value.startDate,
+          endDate: auditFilters.value.endDate
+        }
+        const statsResponse = await AuditService.getStatistics(statsFilters)
+        auditStats.value = statsResponse
+        
+        console.log('✅ Datos de auditoría cargados:', { logs: auditLogs.value.length, stats: auditStats.value })
+      } catch (error) {
+        console.error('❌ Error al cargar datos de auditoría:', error)
+        alert('Error al cargar el historial de auditoría. Verifique la conexión.')
+      } finally {
+        loadingAudit.value = false
+      }
+    }
+
+    /**
+     * Refresca los datos de auditoría
+     */
+    const refreshAuditData = async () => {
+      await loadAuditData()
+    }
+
+    /**
+     * Aplica los filtros de auditoría
+     */
+    const applyAuditFilters = async () => {
+      auditFilters.value.page = 1 // Reset a primera página
+      await loadAuditData()
+    }
+
+    /**
+     * Limpia los filtros de auditoría
+     */
+    const clearAuditFilters = async () => {
+      auditFilters.value = {
+        eventId: '',
+        validationType: '',
+        validationResult: '',
+        operator: '',
+        startDate: '',
+        endDate: '',
+        page: 1,
+        limit: 50
+      }
+      await loadAuditData()
+    }
+
+    /**
+     * Navega a una página específica de auditoría
+     */
+    const goToAuditPage = async (page) => {
+      if (page < 1 || page > auditPagination.value.totalPages) return
+      auditFilters.value.page = page
+      await loadAuditData()
+    }
+
+    /**
+     * Genera y descarga un reporte PDF
+     */
+    const generatePDFReport = async () => {
+      if (!auditStats.value.total) {
+        alert('No hay datos para generar el reporte.')
+        return
+      }
+      
+      generatingPDF.value = true
+      try {
+        const eventId = auditFilters.value.eventId || null
+        const filters = {
+          startDate: auditFilters.value.startDate,
+          endDate: auditFilters.value.endDate
+        }
+        
+        await AuditService.generatePDFReport(eventId, filters)
+        alert('✅ Reporte PDF generado y descargado exitosamente.')
+      } catch (error) {
+        console.error('❌ Error al generar PDF:', error)
+        alert('Error al generar el reporte PDF. Intente nuevamente.')
+      } finally {
+        generatingPDF.value = false
+      }
+    }
+
+    /**
+     * Formatea fecha y hora
+     */
+    const formatDateTime = (timestamp) => {
+      if (!timestamp) return 'N/A'
+      const date = new Date(timestamp)
+      return date.toLocaleString('es-CL', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }
+
+    /**
+     * Obtiene etiqueta del tipo de validación
+     */
+    const getValidationTypeLabel = (type) => {
+      const labels = {
+        qr: '📱 QR',
+        manual: '⌨️ Manual',
+        rut: '👤 RUT'
+      }
+      return labels[type] || type
+    }
+
+    /**
+     * Obtiene etiqueta del resultado de validación
+     */
+    const getValidationResultLabel = (result) => {
+      const labels = {
+        approved: '✅ Aprobado',
+        rejected: '❌ Rechazado',
+        error: '⚠️ Error'
+      }
+      return labels[result] || result
+    }
+
     // Lifecycle
     onMounted(() => {
       loadData()
+      // Cargar datos de auditoría si el tab está activo
+      if (activeTab.value === 'history') {
+        loadAuditData()
+      }
     })
 
     return {
@@ -1439,7 +1837,23 @@ export default {
       confirmRoleChange,
       toggleUserStatus,
       loadUsers,
-      authStore
+      authStore,
+      // Auditoría
+      auditLogs,
+      auditStats,
+      auditFilters,
+      auditPagination,
+      loadingAudit,
+      generatingPDF,
+      loadAuditData,
+      refreshAuditData,
+      applyAuditFilters,
+      clearAuditFilters,
+      goToAuditPage,
+      generatePDFReport,
+      formatDateTime,
+      getValidationTypeLabel,
+      getValidationResultLabel
     }
   }
 }
@@ -2323,5 +2737,383 @@ export default {
   background: #fff3cd;
   border: 1px solid #ffc107;
   color: #856404;
+}
+
+/* ==================== ESTILOS DE AUDITORÍA/HISTORIAL ==================== */
+
+.history-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.audit-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 2rem;
+}
+
+.breakdown-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.breakdown-card h3 {
+  font-size: 16px;
+  margin-bottom: 15px;
+  color: #333;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 10px;
+}
+
+.breakdown-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.breakdown-item:hover {
+  background: #e9ecef;
+  transform: translateX(5px);
+}
+
+.breakdown-label {
+  font-size: 14px;
+  color: #495057;
+}
+
+.breakdown-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.audit-filters {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.audit-filters h3 {
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 5px;
+}
+
+.filter-group input,
+.filter-group select {
+  padding: 8px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.filter-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.audit-table-container {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+}
+
+.audit-table-container h3 {
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1000px;
+}
+
+.audit-table thead {
+  background: #f8f9fa;
+}
+
+.audit-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.audit-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f1f3f5;
+  font-size: 14px;
+  color: #495057;
+}
+
+.audit-table tbody tr {
+  transition: background 0.2s;
+}
+
+.audit-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.audit-table code {
+  background: #e9ecef;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #495057;
+}
+
+.type-badge,
+.category-badge,
+.result-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.type-qr {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.type-manual {
+  background: #fff3e0;
+  color: #ef6c00;
+}
+
+.type-rut {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.category-normal {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.category-vip {
+  background: #fff9c4;
+  color: #f57f17;
+}
+
+.category-general {
+  background: #e1f5fe;
+  color: #0277bd;
+}
+
+.category-premium {
+  background: #fce4ec;
+  color: #c2185b;
+}
+
+.result-approved {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.result-rejected {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.result-error {
+  background: #fff3e0;
+  color: #ef6c00;
+}
+
+.message-cell {
+  max-width: 300px;
+  position: relative;
+}
+
+.fraud-badge {
+  display: inline-block;
+  background: #ffebee;
+  color: #c62828;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 8px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #dee2e6;
+}
+
+.btn-pagination {
+  padding: 8px 16px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-pagination:hover:not(:disabled) {
+  background: #5a67d8;
+  transform: translateY(-1px);
+}
+
+.btn-pagination:disabled {
+  background: #e9ecef;
+  color: #adb5bd;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: #495057;
+  font-weight: 500;
+}
+
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-spinner p {
+  color: #495057;
+  font-size: 14px;
+}
+
+.no-data {
+  text-align: center;
+  padding: 60px;
+  color: #6c757d;
+  font-size: 16px;
+}
+
+.no-data p {
+  margin: 0;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .filters-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .audit-breakdown {
+    grid-template-columns: 1fr;
+  }
+  
+  .history-actions {
+    width: 100%;
+  }
+  
+  .history-actions button {
+    flex: 1;
+  }
+  
+  .audit-table-container {
+    padding: 15px;
+  }
+  
+  .pagination {
+    flex-direction: column;
+    gap: 10px;
+  }
 }
 </style>

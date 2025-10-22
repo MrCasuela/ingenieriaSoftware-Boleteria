@@ -279,7 +279,7 @@ export default {
       // La detección ocurrirá solo cuando realmente se detecte un código
     }
 
-    const simulateQRDetection = () => {
+    const simulateQRDetection = async () => {
       // Esta función solo se llamará cuando realmente se detecte un QR
       const scenarios = [
         { weight: 50, type: 'valid' },
@@ -325,7 +325,7 @@ export default {
             }
             
             // Registrar en auditoría
-            AuditService.logValidation(
+            await AuditService.logValidation(
               ticketCode,
               authStore.userName,
               validationResult.valid,
@@ -356,7 +356,7 @@ export default {
             playErrorSound()
             vibrateDevice([200, 100, 200])
             
-            AuditService.logValidation(
+            await AuditService.logValidation(
               ticketCode,
               authStore.userName,
               false,
@@ -383,7 +383,7 @@ export default {
           playErrorSound()
           vibrateDevice([200, 100, 200])
           
-          AuditService.logValidation(
+          await AuditService.logValidation(
             ticketCode,
             authStore.userName,
             false,
@@ -406,7 +406,7 @@ export default {
           playErrorSound()
           vibrateDevice([200, 100, 200])
           
-          AuditService.logValidation(
+          await AuditService.logValidation(
             ticketCode,
             authStore.userName,
             false,
@@ -429,7 +429,7 @@ export default {
           playErrorSound()
           vibrateDevice([200, 100, 200, 100, 200])
           
-          AuditService.logValidation(
+          await AuditService.logValidation(
             ticketCode,
             authStore.userName,
             false,
@@ -545,7 +545,7 @@ export default {
       }
     }
 
-    const validateManual = () => {
+    const validateManual = async () => {
       const code = manualInput.value.trim()
       
       if (!code) {
@@ -559,7 +559,7 @@ export default {
       const validationResult = ticketStore.validateTicket(code, authStore.userName)
       
       // Registrar en auditoría
-      AuditService.logValidation(
+      await AuditService.logValidation(
         code,
         authStore.userName,
         validationResult.valid,
@@ -630,7 +630,7 @@ export default {
           playErrorSound()
           vibrateDevice([200, 100, 200])
           
-          AuditService.logValidation(
+          await AuditService.logValidation(
             `RUT-${rut}`,
             authStore.userName,
             false,
@@ -678,7 +678,7 @@ export default {
           playSuccessSound()
           vibrateDevice([100])
           
-          AuditService.logValidation(
+          await AuditService.logValidation(
             ticket.codigo,
             authStore.userName,
             true,

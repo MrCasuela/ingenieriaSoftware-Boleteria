@@ -18,7 +18,7 @@ services:
       MYSQL_USER: ${DB_USER:-ticketuser}
       MYSQL_PASSWORD: ${DB_PASSWORD:-ticketpass}
     ports:
-      - "${DB_PORT:-3307}:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./backend/database-schema-init.sql:/docker-entrypoint-initdb.d/init.sql

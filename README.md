@@ -218,7 +218,6 @@ ingenieriaSoftware-Boleteria/
 - Control anti-replay (caché 5 min)
 
 ### Autenticación
-- Hash bcrypt para contraseñas
 - Tokens JWT
 - Roles: cliente, operador, administrador
 - Protección de rutas
@@ -319,7 +318,7 @@ Pablo Sepulveda:
 - Utilizo Api EndPoints
 
 Fernando Salazar:
-- 
+- Sistema de envio por email
 
 Javier Cancino:
 - Creacion Jira

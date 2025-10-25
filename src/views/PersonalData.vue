@@ -36,7 +36,12 @@
             <div class="col-md-6 mb-3">
               <label for="cardNumber" class="form-label">Número de Tarjeta *</label>
               <input type="text" class="form-control" id="cardNumber" v-model="paymentData.cardNumber" 
+<<<<<<< Updated upstream
                      placeholder="1234 5678 9012 3456" maxlength="19" required
+=======
+                     placeholder="1234 5678 9012 3456"
+                     inputmode="numeric" required
+>>>>>>> Stashed changes
                      @input="formatCardNumber">
             </div>
             <div class="col-md-6 mb-3">
@@ -169,7 +174,12 @@ export default {
 
     // Formatear número de tarjeta (ej: 1234 5678 9012 3456)
     const formatCardNumber = (event) => {
+<<<<<<< Updated upstream
       let value = event.target.value.replace(/\s/g, '').replace(/\D/g, '') // Solo números
+=======
+      // Obtener solo los dígitos (sin espacios)
+      let value = event.target.value.replace(/\D/g, '')
+>>>>>>> Stashed changes
       
       // Limitar a 16 dígitos
       if (value.length > 16) {
@@ -177,7 +187,7 @@ export default {
       }
       
       // Agregar espacios cada 4 dígitos
-      const formatted = value.replace(/(\d{4})/g, '$1 ').trim()
+      const formatted = value.replace(/(\d{4})(?=\d)/g, '$1 ')
       paymentData.value.cardNumber = formatted
     }
 

@@ -234,11 +234,13 @@ export const useAuthStore = defineStore('auth', {
           } else {
             console.warn('⚠️ No se recibió token en la respuesta del login')
             console.warn('⚠️ Estructura de data:', JSON.stringify(data, null, 2))
+
             
             // SOLUCIÓN: Generar un token temporal si el backend no lo devuelve
             const tempToken = 'temp-token-' + Date.now() + '-' + Math.random().toString(36).substring(7)
             console.warn('⚠️ Generando token temporal:', tempToken.substring(0, 30) + '...')
             localStorage.setItem('apiToken', tempToken)
+
           }
 
           return {

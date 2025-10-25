@@ -6,6 +6,7 @@ import TicketType from '../models/TicketType.js';
 import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 
+
 /**
  * @desc    Obtener todos los usuarios (solo para administradores)
  * @route   GET /api/admin/users
@@ -344,6 +345,7 @@ export const getUserStats = async (req, res) => {
   }
 };
 
+
 /**
  * @desc    Obtener reporte de asistencia con filtros
  * @route   GET /api/admin/reports/attendance
@@ -589,3 +591,4 @@ export const createClient = async (req, res) => {
     });
   }
 };
+

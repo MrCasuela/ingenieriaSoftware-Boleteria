@@ -1,5 +1,9 @@
 import jwt from 'jsonwebtoken';
+
 import User from '../models/User.js';
+
+import { Cliente, Operador, Administrador } from '../models/index.js';
+
 
 /**
  * Middleware para verificar token JWT
@@ -22,10 +26,17 @@ export const protect = async (req, res, next) => {
 
   try {
     // Verificar token
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key-12345');
 
     // Buscar usuario en el modelo User unificado
-    const user = await User.findByPk(decoded.id);
+    const user = await User.findByPk
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Buscar usuario en los tres modelos
+    let user = await Cliente.findByPk(decoded.id);
+    if (!user) user = await Operador.findByPk(decoded.id);
+    if (!user) user = await Administrador.findByPk(decoded.id);
 
     if (!user) {
       return res.status(401).json({
@@ -33,6 +44,7 @@ export const protect = async (req, res, next) => {
         message: 'No autorizado - Usuario no encontrado'
       });
     }
+
 
     console.log('🔍 Usuario encontrado:', {
       id: user.id,
@@ -49,6 +61,9 @@ export const protect = async (req, res, next) => {
     
     if (isActive === 0 || isActive === false) {
       console.log('❌ Usuario no activo:', isActive);
+    // Verificar que el usuario esté activo
+    if (!user.isActive) {
+
       return res.status(403).json({
         success: false,
         message: 'Cuenta desactivada'

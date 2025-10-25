@@ -981,6 +981,7 @@ export default {
       shift: 'mañana'
     })
 
+
     // Reportes (HU6)
     const reportData = ref(null)
     const reportFilters = ref({
@@ -995,12 +996,15 @@ export default {
     const isExporting = ref(false)
     const lastUpdateTime = ref('')
 
+
     // Tabs
     const tabs = [
       { id: 'events', label: 'Eventos', icon: '🎭' },
       { id: 'ticketTypes', label: 'Tipos de Ticket', icon: '🎫' },
       { id: 'users', label: 'Usuarios', icon: '👥' },
+
       { id: 'reports', label: 'Reportes', icon: '📊' },
+
       { id: 'stats', label: 'Estadísticas', icon: '📈' }
     ]
 
@@ -1440,6 +1444,187 @@ export default {
         'Administrador': 'role-admin'
       }
       return classes[role] || 'role-default'
+
+    }
+
+    const getRoleIcon = (role) => {
+      const icons = {
+        'Cliente': '👨‍💼',
+        'Operador': '🎫',
+        'Administrador': '🔐'
+      }
+      return icons[role] || '👤'
+    }
+
+    const closeUserForm = () => {
+      showUserForm.value = false
+      editingUser.value = null
+      userForm.value = {
+        role: 'Cliente',
+        email: '',
+        password: '',
+        firstName: '',
+        lastName: '',
+        phone: '',
+        document: '',
+        employeeId: '',
+        shift: 'mañana'
+      }
+    }
+
+    const saveUser = async () => {
+      try {
+        console.log('==================== INICIO SAVE USER ====================')
+        const token = localStorage.getItem('apiToken')
+        console.log('Token obtenido:', token ? 'Existe' : 'NO EXISTE')
+        console.log('Token length:', token?.length)
+        
+        if (!token) {
+          console.error('❌ No hay token de autenticación')
+          alert('❌ Error: No hay token de autenticación. Por favor, cierre sesión e inicie sesión nuevamente.')
+          return
+        }
+
+        let endpoint = ''
+        let userData = {
+          email: userForm.value.email,
+          password: userForm.value.password,
+          firstName: userForm.value.firstName,
+          lastName: userForm.value.lastName,
+          phone: userForm.value.phone
+        }
+
+        // Configurar endpoint y datos según el rol
+        if (userForm.value.role === 'Cliente') {
+          endpoint = '/api/admin/clients'
+          userData.document = userForm.value.document
+        } else if (userForm.value.role === 'Operador') {
+          endpoint = '/api/admin/operators'
+          userData.employeeId = userForm.value.employeeId || `OP-${Date.now()}`
+          userData.shift = userForm.value.shift
+        }
+
+        console.log('Endpoint:', endpoint)
+        console.log('User Data:', userData)
+        console.log('Enviando petición...')
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(userData)
+        })
+
+        console.log('Response status:', response.status)
+        console.log('Response ok:', response.ok)
+        
+        const data = await response.json()
+        console.log('Response data:', data)
+
+        if (response.ok && data.success) {
+          console.log('✅ Usuario creado exitosamente')
+          alert(`✅ ${userForm.value.role} creado exitosamente`)
+          closeUserForm()
+          await loadUsers()
+        } else {
+          console.error('❌ Error en respuesta:', data)
+          alert(`❌ Error: ${data.message || 'Error desconocido'}`)
+        }
+        console.log('==================== FIN SAVE USER ====================')
+      } catch (error) {
+        console.error('==================== ERROR EN SAVE USER ====================')
+        console.error('Error completo:', error)
+        console.error('Error name:', error.name)
+        console.error('Error message:', error.message)
+        console.error('Error stack:', error.stack)
+        alert(`❌ Error al crear usuario: ${error.message}`)
+      }
+    }
+
+    const changeUserRole = (user) => {
+      selectedUser.value = user
+      newRole.value = user.userType
+      showRoleChangeModal.value = true
+    }
+
+    const confirmRoleChange = async () => {
+      try {
+        const token = localStorage.getItem('apiToken')
+        if (!token) {
+          alert('No hay token de autenticación')
+          return
+        }
+
+        if (newRole.value === selectedUser.value.userType) {
+          alert('El usuario ya tiene ese rol')
+          return
+        }
+
+        const response = await fetch(`/api/admin/users/${selectedUser.value.id}/role`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ newRole: newRole.value })
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.success) {
+          alert(`✅ Rol cambiado exitosamente de ${selectedUser.value.userType} a ${newRole.value}`)
+          showRoleChangeModal.value = false
+          selectedUser.value = null
+          await loadUsers()
+        } else {
+          alert(`❌ Error: ${data.message}`)
+        }
+      } catch (error) {
+        console.error('Error al cambiar rol:', error)
+        alert('❌ Error al cambiar rol')
+      }
+    }
+
+    const toggleUserStatus = async (user) => {
+      try {
+        const token = localStorage.getItem('apiToken')
+        if (!token) {
+          alert('No hay token de autenticación')
+          return
+        }
+
+        const action = user.isActive ? 'desactivar' : 'activar'
+        if (!confirm(`¿Está seguro que desea ${action} a ${user.email}?`)) {
+          return
+        }
+
+        const response = await fetch(`/api/admin/users/${user.id}/toggle-status`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.success) {
+          alert(`✅ Usuario ${action}do exitosamente`)
+          await loadUsers()
+        } else {
+          alert(`❌ Error: ${data.message}`)
+        }
+      } catch (error) {
+        console.error('Error al cambiar estado:', error)
+        alert('❌ Error al cambiar estado del usuario')
+      }
+    }
+
+    const handleLogout = () => {
+      authStore.logout()
+      router.push('/operator/login')
     }
 
     const getRoleIcon = (role) => {
@@ -1781,6 +1966,7 @@ export default {
       confirmRoleChange,
       toggleUserStatus,
       loadUsers,
+
       authStore,
       // Reportes (HU6)
       reportData,
@@ -1793,6 +1979,8 @@ export default {
       exportStatsCSV,
       exportPDF,
       formatDateTime
+      authStore
+
     }
   }
 }
@@ -2678,6 +2866,7 @@ export default {
   color: #856404;
 }
 
+
 /* ========== ESTILOS REPORTES (HU6) ========== */
 
 .filters-section {
@@ -2933,4 +3122,5 @@ export default {
     padding: 0.5rem;
   }
 }
+
 </style>

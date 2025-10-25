@@ -318,7 +318,11 @@ Pablo Sepulveda:
 - Utilizo Api EndPoints
 
 Fernando Salazar:
+
+- 
+
 - Sistema de envio por email
+
 
 Javier Cancino:
 - Creacion Jira

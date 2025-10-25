@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { Cliente, Operador, Administrador } from '../models/index.js';
+import { Op } from 'sequelize';
 
 /**
  * Generar JWT Token
@@ -20,7 +21,11 @@ export const registerCliente = async (req, res) => {
     const { email, password, firstName, lastName, phone, document } = req.body;
 
     // Verificar si el usuario ya existe
-    const existingUser = await Cliente.findOne({ $or: [{ email }, { document }] });
+    const existingUser = await Cliente.findOne({ 
+      where: {
+        [Op.or]: [{ email }, { document }]
+      }
+    });
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -39,7 +44,7 @@ export const registerCliente = async (req, res) => {
     });
 
     // Generar token
-    const token = generateToken(cliente._id);
+    const token = generateToken(cliente.id);
 
     res.status(201).json({
       success: true,
@@ -80,7 +85,7 @@ export const login = async (req, res) => {
     if (userType === 'Operador') Model = Operador;
     if (userType === 'Administrador') Model = Administrador;
 
-    const user = await Model.findOne({ email }).select('+password');
+    const user = await Model.findOne({ where: { email } });
 
     if (!user) {
       return res.status(401).json({
@@ -112,7 +117,7 @@ export const login = async (req, res) => {
     }
 
     // Generar token
-    const token = generateToken(user._id);
+    const token = generateToken(user.id);
 
     res.json({
       success: true,

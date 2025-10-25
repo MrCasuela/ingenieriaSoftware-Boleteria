@@ -1,5 +1,9 @@
 import jwt from 'jsonwebtoken';
+
+import User from '../models/User.js';
+
 import { Cliente, Operador, Administrador } from '../models/index.js';
+
 
 /**
  * Middleware para verificar token JWT
@@ -22,6 +26,11 @@ export const protect = async (req, res, next) => {
 
   try {
     // Verificar token
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key-12345');
+
+    // Buscar usuario en el modelo User unificado
+    const user = await User.findByPk
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Buscar usuario en los tres modelos
@@ -36,8 +45,25 @@ export const protect = async (req, res, next) => {
       });
     }
 
+
+    console.log('🔍 Usuario encontrado:', {
+      id: user.id,
+      email: user.email,
+      userType: user.userType,
+      isActive: user.isActive,
+      isActiveRaw: user.get('is_active'),
+      dataValues: user.dataValues
+    });
+
+    // Verificar que el usuario esté activo
+    // Usamos get('is_active') para asegurar que obtenemos el valor correcto
+    const isActive = user.isActive !== undefined ? user.isActive : user.get('is_active');
+    
+    if (isActive === 0 || isActive === false) {
+      console.log('❌ Usuario no activo:', isActive);
     // Verificar que el usuario esté activo
     if (!user.isActive) {
+
       return res.status(403).json({
         success: false,
         message: 'Cuenta desactivada'

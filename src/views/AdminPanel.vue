@@ -348,6 +348,236 @@
         </div>
       </div>
 
+      <!-- Tab: Reportes (HU6) -->
+      <div v-if="activeTab === 'reports'" class="tab-content">
+        <div class="section-header">
+          <h2>📊 Reportes de Asistencia y Accesos</h2>
+        </div>
+
+        <!-- Filtros de Búsqueda -->
+        <div class="filters-section">
+          <h3>🔍 Filtros</h3>
+          <div class="filters-grid">
+            <div class="filter-group">
+              <label>Evento:</label>
+              <select v-model="reportFilters.eventId" class="form-control">
+                <option value="">Todos los eventos</option>
+                <option v-for="event in events" :key="event.id" :value="event.id">
+                  {{ event.name }}
+                </option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Estado:</label>
+              <select v-model="reportFilters.status" class="form-control">
+                <option value="">Todos los estados</option>
+                <option value="validated">Validados</option>
+                <option value="paid">Pagados</option>
+                <option value="pending">Pendientes</option>
+                <option value="cancelled">Cancelados</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Sector:</label>
+              <input 
+                type="text" 
+                v-model="reportFilters.sector" 
+                placeholder="Ej: VIP, General" 
+                class="form-control"
+              />
+            </div>
+
+            <div class="filter-group">
+              <label>Fecha Desde:</label>
+              <input 
+                type="date" 
+                v-model="reportFilters.startDate" 
+                class="form-control"
+              />
+            </div>
+
+            <div class="filter-group">
+              <label>Fecha Hasta:</label>
+              <input 
+                type="date" 
+                v-model="reportFilters.endDate" 
+                class="form-control"
+              />
+            </div>
+
+            <div class="filter-actions">
+              <button @click="loadReportData" class="btn-primary">
+                🔍 Buscar
+              </button>
+              <button @click="clearFilters" class="btn-secondary">
+                🔄 Limpiar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estadísticas en Tiempo Real -->
+        <div v-if="reportData" class="report-stats-section">
+          <h3>📈 Estadísticas en Tiempo Real</h3>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon">🎫</div>
+              <div class="stat-info">
+                <h4>Total Tickets</h4>
+                <p class="stat-number">{{ reportData.stats?.totalTickets || 0 }}</p>
+              </div>
+            </div>
+            <div class="stat-card success">
+              <div class="stat-icon">✅</div>
+              <div class="stat-info">
+                <h4>Validados</h4>
+                <p class="stat-number">{{ reportData.stats?.validated || 0 }}</p>
+              </div>
+            </div>
+            <div class="stat-card warning">
+              <div class="stat-icon">⏳</div>
+              <div class="stat-info">
+                <h4>Pendientes</h4>
+                <p class="stat-number">{{ reportData.stats?.pending || 0 }}</p>
+              </div>
+            </div>
+            <div class="stat-card danger">
+              <div class="stat-icon">❌</div>
+              <div class="stat-info">
+                <h4>Cancelados</h4>
+                <p class="stat-number">{{ reportData.stats?.cancelled || 0 }}</p>
+              </div>
+            </div>
+            <div class="stat-card info">
+              <div class="stat-icon">💰</div>
+              <div class="stat-info">
+                <h4>Ingresos Totales</h4>
+                <p class="stat-number">${{ formatPrice(reportData.stats?.totalRevenue || 0) }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Última actualización -->
+          <div class="update-info">
+            <span>🕐 Última actualización: {{ lastUpdateTime }}</span>
+            <button @click="loadReportData" class="btn-refresh">
+              🔄 Actualizar
+            </button>
+          </div>
+        </div>
+
+        <!-- Botones de Exportación -->
+        <div class="export-section">
+          <h3>📥 Exportar Reportes</h3>
+          <div class="export-buttons">
+            <button @click="exportCSV" class="btn-export btn-csv" :disabled="isExporting">
+              <span v-if="!isExporting">📄 Exportar CSV (Detallado)</span>
+              <span v-else>⏳ Exportando...</span>
+            </button>
+            <button @click="exportStatsCSV" class="btn-export btn-csv" :disabled="isExporting">
+              <span v-if="!isExporting">📊 Exportar CSV (Estadísticas)</span>
+              <span v-else>⏳ Exportando...</span>
+            </button>
+            <button @click="exportPDF" class="btn-export btn-pdf" :disabled="isExporting">
+              <span v-if="!isExporting">📕 Exportar PDF</span>
+              <span v-else>⏳ Exportando...</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Estadísticas por Evento -->
+        <div v-if="reportData && reportData.byEvent?.length > 0" class="report-section">
+          <h3>🎭 Check-ins por Evento</h3>
+          <div class="report-table-container">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Evento</th>
+                  <th>Fecha</th>
+                  <th>Lugar</th>
+                  <th>Total Check-ins</th>
+                  <th>Validados</th>
+                  <th>Ingresos</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="event in reportData.byEvent" :key="event.eventName">
+                  <td><strong>{{ event.eventName }}</strong></td>
+                  <td>{{ formatDate(event.eventDate) }}</td>
+                  <td>{{ event.venue || 'N/A' }}</td>
+                  <td>{{ event.totalCheckins }}</td>
+                  <td>
+                    <span class="badge-success">{{ event.validated }}</span>
+                  </td>
+                  <td>${{ formatPrice(event.revenue) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Estadísticas por Sector -->
+        <div v-if="reportData && reportData.bySector?.length > 0" class="report-section">
+          <h3>🎯 Check-ins por Sector</h3>
+          <div class="report-table-container">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Sector</th>
+                  <th>Total Check-ins</th>
+                  <th>Validados</th>
+                  <th>Ingresos</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="sector in reportData.bySector" :key="sector.sector">
+                  <td><strong>{{ sector.sector }}</strong></td>
+                  <td>{{ sector.totalCheckins }}</td>
+                  <td>
+                    <span class="badge-success">{{ sector.validated }}</span>
+                  </td>
+                  <td>${{ formatPrice(sector.revenue) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Estadísticas por Operador -->
+        <div v-if="reportData && reportData.byOperator?.length > 0" class="report-section">
+          <h3>👤 Validaciones por Operador</h3>
+          <div class="report-table-container">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Operador</th>
+                  <th>Total Validaciones</th>
+                  <th>Última Validación</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="operator in reportData.byOperator" :key="operator.operatorName">
+                  <td><strong>{{ operator.operatorName }}</strong></td>
+                  <td>{{ operator.totalValidations }}</td>
+                  <td>{{ formatDateTime(operator.lastValidation) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Mensaje cuando no hay datos -->
+        <div v-if="!reportData" class="empty-state">
+          <p>🔍 Selecciona los filtros y presiona "Buscar" para generar el reporte</p>
+        </div>
+
+        <div v-else-if="reportData && reportData.tickets?.length === 0" class="empty-state">
+          <p>📭 No se encontraron datos para los filtros seleccionados</p>
+        </div>
+      </div>
+
       <!-- Tab: Estadísticas -->
       <div v-if="activeTab === 'stats'" class="tab-content">
         <div class="section-header">
@@ -713,6 +943,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import * as ticketTypeApi from '../services/ticketTypeApiService'
 import * as eventApi from '../services/eventApiService'
+import { reportService } from '../services/apiService'
 
 export default {
   name: 'AdminPanel',
@@ -750,11 +981,30 @@ export default {
       shift: 'mañana'
     })
 
+
+    // Reportes (HU6)
+    const reportData = ref(null)
+    const reportFilters = ref({
+      eventId: '',
+      startDate: '',
+      endDate: '',
+      status: '',
+      sector: '',
+      ticketTypeId: '',
+      operatorId: ''
+    })
+    const isExporting = ref(false)
+    const lastUpdateTime = ref('')
+
+
     // Tabs
     const tabs = [
       { id: 'events', label: 'Eventos', icon: '🎭' },
       { id: 'ticketTypes', label: 'Tipos de Ticket', icon: '🎫' },
       { id: 'users', label: 'Usuarios', icon: '👥' },
+
+      { id: 'reports', label: 'Reportes', icon: '📊' },
+
       { id: 'stats', label: 'Estadísticas', icon: '📈' }
     ]
 
@@ -1194,6 +1444,187 @@ export default {
         'Administrador': 'role-admin'
       }
       return classes[role] || 'role-default'
+
+    }
+
+    const getRoleIcon = (role) => {
+      const icons = {
+        'Cliente': '👨‍💼',
+        'Operador': '🎫',
+        'Administrador': '🔐'
+      }
+      return icons[role] || '👤'
+    }
+
+    const closeUserForm = () => {
+      showUserForm.value = false
+      editingUser.value = null
+      userForm.value = {
+        role: 'Cliente',
+        email: '',
+        password: '',
+        firstName: '',
+        lastName: '',
+        phone: '',
+        document: '',
+        employeeId: '',
+        shift: 'mañana'
+      }
+    }
+
+    const saveUser = async () => {
+      try {
+        console.log('==================== INICIO SAVE USER ====================')
+        const token = localStorage.getItem('apiToken')
+        console.log('Token obtenido:', token ? 'Existe' : 'NO EXISTE')
+        console.log('Token length:', token?.length)
+        
+        if (!token) {
+          console.error('❌ No hay token de autenticación')
+          alert('❌ Error: No hay token de autenticación. Por favor, cierre sesión e inicie sesión nuevamente.')
+          return
+        }
+
+        let endpoint = ''
+        let userData = {
+          email: userForm.value.email,
+          password: userForm.value.password,
+          firstName: userForm.value.firstName,
+          lastName: userForm.value.lastName,
+          phone: userForm.value.phone
+        }
+
+        // Configurar endpoint y datos según el rol
+        if (userForm.value.role === 'Cliente') {
+          endpoint = '/api/admin/clients'
+          userData.document = userForm.value.document
+        } else if (userForm.value.role === 'Operador') {
+          endpoint = '/api/admin/operators'
+          userData.employeeId = userForm.value.employeeId || `OP-${Date.now()}`
+          userData.shift = userForm.value.shift
+        }
+
+        console.log('Endpoint:', endpoint)
+        console.log('User Data:', userData)
+        console.log('Enviando petición...')
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(userData)
+        })
+
+        console.log('Response status:', response.status)
+        console.log('Response ok:', response.ok)
+        
+        const data = await response.json()
+        console.log('Response data:', data)
+
+        if (response.ok && data.success) {
+          console.log('✅ Usuario creado exitosamente')
+          alert(`✅ ${userForm.value.role} creado exitosamente`)
+          closeUserForm()
+          await loadUsers()
+        } else {
+          console.error('❌ Error en respuesta:', data)
+          alert(`❌ Error: ${data.message || 'Error desconocido'}`)
+        }
+        console.log('==================== FIN SAVE USER ====================')
+      } catch (error) {
+        console.error('==================== ERROR EN SAVE USER ====================')
+        console.error('Error completo:', error)
+        console.error('Error name:', error.name)
+        console.error('Error message:', error.message)
+        console.error('Error stack:', error.stack)
+        alert(`❌ Error al crear usuario: ${error.message}`)
+      }
+    }
+
+    const changeUserRole = (user) => {
+      selectedUser.value = user
+      newRole.value = user.userType
+      showRoleChangeModal.value = true
+    }
+
+    const confirmRoleChange = async () => {
+      try {
+        const token = localStorage.getItem('apiToken')
+        if (!token) {
+          alert('No hay token de autenticación')
+          return
+        }
+
+        if (newRole.value === selectedUser.value.userType) {
+          alert('El usuario ya tiene ese rol')
+          return
+        }
+
+        const response = await fetch(`/api/admin/users/${selectedUser.value.id}/role`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ newRole: newRole.value })
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.success) {
+          alert(`✅ Rol cambiado exitosamente de ${selectedUser.value.userType} a ${newRole.value}`)
+          showRoleChangeModal.value = false
+          selectedUser.value = null
+          await loadUsers()
+        } else {
+          alert(`❌ Error: ${data.message}`)
+        }
+      } catch (error) {
+        console.error('Error al cambiar rol:', error)
+        alert('❌ Error al cambiar rol')
+      }
+    }
+
+    const toggleUserStatus = async (user) => {
+      try {
+        const token = localStorage.getItem('apiToken')
+        if (!token) {
+          alert('No hay token de autenticación')
+          return
+        }
+
+        const action = user.isActive ? 'desactivar' : 'activar'
+        if (!confirm(`¿Está seguro que desea ${action} a ${user.email}?`)) {
+          return
+        }
+
+        const response = await fetch(`/api/admin/users/${user.id}/toggle-status`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.success) {
+          alert(`✅ Usuario ${action}do exitosamente`)
+          await loadUsers()
+        } else {
+          alert(`❌ Error: ${data.message}`)
+        }
+      } catch (error) {
+        console.error('Error al cambiar estado:', error)
+        alert('❌ Error al cambiar estado del usuario')
+      }
+    }
+
+    const handleLogout = () => {
+      authStore.logout()
+      router.push('/operator/login')
     }
 
     const getRoleIcon = (role) => {
@@ -1380,6 +1811,102 @@ export default {
       router.push('/')
     }
 
+    // ========== FUNCIONES DE REPORTES (HU6) ==========
+
+    const loadReportData = async () => {
+      try {
+        console.log('🔍 Cargando reporte con filtros:', reportFilters.value)
+        
+        const data = await reportService.getAttendanceReport(reportFilters.value)
+        reportData.value = data
+        
+        // Actualizar tiempo de última actualización
+        lastUpdateTime.value = new Date().toLocaleString('es-ES')
+        
+        console.log('✅ Reporte cargado:', data)
+      } catch (error) {
+        console.error('❌ Error al cargar reporte:', error)
+        alert('Error al cargar el reporte. Por favor intenta nuevamente.')
+      }
+    }
+
+    const clearFilters = () => {
+      reportFilters.value = {
+        eventId: '',
+        startDate: '',
+        endDate: '',
+        status: '',
+        sector: '',
+        ticketTypeId: '',
+        operatorId: ''
+      }
+      reportData.value = null
+      lastUpdateTime.value = ''
+    }
+
+    const exportCSV = async () => {
+      try {
+        isExporting.value = true
+        console.log('📄 Exportando CSV con filtros:', reportFilters.value)
+        
+        await reportService.exportToCSV(reportFilters.value)
+        
+        console.log('✅ CSV exportado exitosamente')
+        alert('✅ Reporte CSV descargado exitosamente')
+      } catch (error) {
+        console.error('❌ Error al exportar CSV:', error)
+        alert('Error al exportar el reporte CSV. Por favor intenta nuevamente.')
+      } finally {
+        isExporting.value = false
+      }
+    }
+
+    const exportStatsCSV = async () => {
+      try {
+        isExporting.value = true
+        console.log('📊 Exportando estadísticas CSV con filtros:', reportFilters.value)
+        
+        await reportService.exportStatsToCSV(reportFilters.value)
+        
+        console.log('✅ Estadísticas CSV exportadas exitosamente')
+        alert('✅ Estadísticas CSV descargadas exitosamente')
+      } catch (error) {
+        console.error('❌ Error al exportar estadísticas CSV:', error)
+        alert('Error al exportar estadísticas CSV. Por favor intenta nuevamente.')
+      } finally {
+        isExporting.value = false
+      }
+    }
+
+    const exportPDF = async () => {
+      try {
+        isExporting.value = true
+        console.log('📕 Exportando PDF con filtros:', reportFilters.value)
+        
+        await reportService.exportToPDF(reportFilters.value)
+        
+        console.log('✅ PDF exportado exitosamente')
+        alert('✅ Reporte PDF descargado exitosamente')
+      } catch (error) {
+        console.error('❌ Error al exportar PDF:', error)
+        alert('Error al exportar el reporte PDF. Por favor intenta nuevamente.')
+      } finally {
+        isExporting.value = false
+      }
+    }
+
+    const formatDateTime = (dateString) => {
+      if (!dateString) return 'N/A'
+      const date = new Date(dateString)
+      return date.toLocaleString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }
+
     // Lifecycle
     onMounted(() => {
       loadData()
@@ -1439,7 +1966,21 @@ export default {
       confirmRoleChange,
       toggleUserStatus,
       loadUsers,
+
+      authStore,
+      // Reportes (HU6)
+      reportData,
+      reportFilters,
+      isExporting,
+      lastUpdateTime,
+      loadReportData,
+      clearFilters,
+      exportCSV,
+      exportStatsCSV,
+      exportPDF,
+      formatDateTime
       authStore
+
     }
   }
 }
@@ -2324,4 +2865,262 @@ export default {
   border: 1px solid #ffc107;
   color: #856404;
 }
+
+
+/* ========== ESTILOS REPORTES (HU6) ========== */
+
+.filters-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.filters-section h3 {
+  margin-bottom: 1rem;
+  color: #2c3e50;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-weight: 600;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.report-stats-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.report-stats-section h3 {
+  margin-bottom: 1rem;
+  color: #2c3e50;
+}
+
+.stat-card.success {
+  background: linear-gradient(135deg, #4caf50 0%, #81c784 100%);
+  color: white;
+}
+
+.stat-card.warning {
+  background: linear-gradient(135deg, #ff9800 0%, #ffb74d 100%);
+  color: white;
+}
+
+.stat-card.danger {
+  background: linear-gradient(135deg, #f44336 0%, #e57373 100%);
+  color: white;
+}
+
+.stat-card.info {
+  background: linear-gradient(135deg, #2196f3 0%, #64b5f6 100%);
+  color: white;
+}
+
+.update-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f5f7fa;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.btn-refresh {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.btn-refresh:hover {
+  background: #764ba2;
+  transform: translateY(-2px);
+}
+
+.export-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.export-section h3 {
+  margin-bottom: 1rem;
+  color: #2c3e50;
+}
+
+.export-buttons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.btn-export {
+  flex: 1;
+  min-width: 200px;
+  padding: 1rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-export:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-csv {
+  background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+  color: white;
+}
+
+.btn-csv:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.btn-pdf {
+  background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
+  color: white;
+}
+
+.btn-pdf:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+}
+
+.report-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.report-section h3 {
+  margin-bottom: 1rem;
+  color: #2c3e50;
+}
+
+.report-table-container {
+  overflow-x: auto;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.report-table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.report-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+}
+
+.report-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.report-table tbody tr:hover {
+  background: #f5f7fa;
+}
+
+.badge-success {
+  background: #4caf50;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.empty-state {
+  background: white;
+  padding: 3rem;
+  border-radius: 12px;
+  text-align: center;
+  color: #666;
+  font-size: 1.1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.empty-state p {
+  margin: 0;
+}
+
+/* Responsive para reportes */
+@media (max-width: 768px) {
+  .filters-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-actions {
+    grid-column: 1;
+  }
+
+  .export-buttons {
+    flex-direction: column;
+  }
+
+  .btn-export {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .report-table {
+    font-size: 0.8rem;
+  }
+
+  .report-table th,
+  .report-table td {
+    padding: 0.5rem;
+  }
+}
+
 </style>

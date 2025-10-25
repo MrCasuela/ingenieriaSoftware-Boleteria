@@ -62,3 +62,168 @@ export const paymentService = {
     }
   }
 }
+
+// Servicio de reportes para administradores (HU6)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+export const reportService = {
+  /**
+   * Obtener reporte de asistencia con filtros
+   */
+  async getAttendanceReport(filters = {}) {
+    try {
+      const token = localStorage.getItem('apiToken') || localStorage.getItem('token');
+      const queryParams = new URLSearchParams();
+      
+      // Agregar filtros a la query string
+      if (filters.eventId) queryParams.append('eventId', filters.eventId);
+      if (filters.startDate) queryParams.append('startDate', filters.startDate);
+      if (filters.endDate) queryParams.append('endDate', filters.endDate);
+      if (filters.status) queryParams.append('status', filters.status);
+      if (filters.sector) queryParams.append('sector', filters.sector);
+      if (filters.ticketTypeId) queryParams.append('ticketTypeId', filters.ticketTypeId);
+      if (filters.operatorId) queryParams.append('operatorId', filters.operatorId);
+
+      const response = await fetch(`${API_URL}/admin/reports/attendance?${queryParams}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al obtener reporte');
+      }
+
+      const data = await response.json();
+      return data.data;
+    } catch (error) {
+      console.error('Error en getAttendanceReport:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Exportar reporte a CSV (tickets detallados)
+   */
+  async exportToCSV(filters = {}) {
+    try {
+      const token = localStorage.getItem('apiToken') || localStorage.getItem('token');
+      const queryParams = new URLSearchParams();
+      
+      if (filters.eventId) queryParams.append('eventId', filters.eventId);
+      if (filters.startDate) queryParams.append('startDate', filters.startDate);
+      if (filters.endDate) queryParams.append('endDate', filters.endDate);
+      if (filters.status) queryParams.append('status', filters.status);
+      if (filters.sector) queryParams.append('sector', filters.sector);
+      if (filters.ticketTypeId) queryParams.append('ticketTypeId', filters.ticketTypeId);
+      if (filters.operatorId) queryParams.append('operatorId', filters.operatorId);
+
+      const response = await fetch(`${API_URL}/admin/reports/attendance/export/csv?${queryParams}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al exportar CSV');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `reporte-asistencia-${Date.now()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error al exportar CSV:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Exportar estadísticas a CSV
+   */
+  async exportStatsToCSV(filters = {}) {
+    try {
+      const token = localStorage.getItem('apiToken') || localStorage.getItem('token');
+      const queryParams = new URLSearchParams();
+      
+      if (filters.eventId) queryParams.append('eventId', filters.eventId);
+      if (filters.startDate) queryParams.append('startDate', filters.startDate);
+      if (filters.endDate) queryParams.append('endDate', filters.endDate);
+      if (filters.status) queryParams.append('status', filters.status);
+      if (filters.sector) queryParams.append('sector', filters.sector);
+
+      const response = await fetch(`${API_URL}/admin/reports/attendance/export/csv-stats?${queryParams}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al exportar estadísticas CSV');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `estadisticas-${Date.now()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error al exportar estadísticas CSV:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Exportar reporte a PDF
+   */
+  async exportToPDF(filters = {}) {
+    try {
+      const token = localStorage.getItem('apiToken') || localStorage.getItem('token');
+      const queryParams = new URLSearchParams();
+      
+      if (filters.eventId) queryParams.append('eventId', filters.eventId);
+      if (filters.startDate) queryParams.append('startDate', filters.startDate);
+      if (filters.endDate) queryParams.append('endDate', filters.endDate);
+      if (filters.status) queryParams.append('status', filters.status);
+      if (filters.sector) queryParams.append('sector', filters.sector);
+
+      const response = await fetch(`${API_URL}/admin/reports/attendance/export/pdf?${queryParams}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al exportar PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `reporte-asistencia-${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error al exportar PDF:', error);
+      throw error;
+    }
+  }
+}

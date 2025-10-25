@@ -1,5 +1,11 @@
 import { Cliente, Operador, Administrador } from '../models/index.js';
 import User from '../models/User.js';
+import Ticket from '../models/Ticket.js';
+import Event from '../models/Event.js';
+import TicketType from '../models/TicketType.js';
+import { Op } from 'sequelize';
+import sequelize from '../config/database.js';
+
 
 /**
  * @desc    Obtener todos los usuarios (solo para administradores)
@@ -338,3 +344,251 @@ export const getUserStats = async (req, res) => {
     });
   }
 };
+
+
+/**
+ * @desc    Obtener reporte de asistencia con filtros
+ * @route   GET /api/admin/reports/attendance
+ * @access  Private/Admin
+ */
+export const getAttendanceReport = async (req, res) => {
+  try {
+    const { 
+      eventId, 
+      startDate, 
+      endDate, 
+      status,
+      sector,
+      ticketTypeId,
+      operatorId 
+    } = req.query;
+
+    // Construir filtros dinámicos
+    const whereClause = {};
+    
+    if (eventId) {
+      whereClause.eventId = eventId;
+    }
+    
+    if (status) {
+      whereClause.status = status;
+    }
+    
+    if (ticketTypeId) {
+      whereClause.ticketTypeId = ticketTypeId;
+    }
+    
+    if (operatorId) {
+      whereClause.validatedBy = operatorId;
+    }
+    
+    // Filtro de fechas
+    if (startDate || endDate) {
+      whereClause.validatedAt = {};
+      if (startDate) {
+        whereClause.validatedAt[Op.gte] = new Date(startDate);
+      }
+      if (endDate) {
+        whereClause.validatedAt[Op.lte] = new Date(endDate);
+      }
+    }
+
+    // Obtener tickets con datos relacionados
+    const tickets = await Ticket.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: Event,
+          as: 'event',
+          attributes: ['id', 'name', 'date', 'venue', 'category']
+        },
+        {
+          model: TicketType,
+          as: 'ticketType',
+          attributes: ['id', 'name', 'sector', 'price']
+        },
+        {
+          model: User,
+          as: 'validator',
+          attributes: ['id', 'firstName', 'lastName', 'userType']
+        }
+      ],
+      order: [['validatedAt', 'DESC']]
+    });
+
+    // Calcular estadísticas en tiempo real
+    const stats = {
+      totalTickets: tickets.length,
+      validated: tickets.filter(t => t.status === 'validated').length,
+      pending: tickets.filter(t => t.status === 'pending' || t.status === 'paid').length,
+      cancelled: tickets.filter(t => t.status === 'cancelled').length,
+      totalRevenue: tickets.reduce((sum, t) => sum + parseFloat(t.totalAmount || 0), 0)
+    };
+
+    // Agrupar por evento
+    const byEvent = tickets.reduce((acc, ticket) => {
+      const eventName = ticket.event?.name || 'Sin evento';
+      if (!acc[eventName]) {
+        acc[eventName] = {
+          event: ticket.event,
+          count: 0,
+          validated: 0,
+          revenue: 0
+        };
+      }
+      acc[eventName].count++;
+      if (ticket.status === 'validated') {
+        acc[eventName].validated++;
+      }
+      acc[eventName].revenue += parseFloat(ticket.totalAmount || 0);
+      return acc;
+    }, {});
+
+    // Agrupar por sector
+    const bySector = tickets.reduce((acc, ticket) => {
+      const sector = ticket.ticketType?.sector || 'Sin sector';
+      if (!acc[sector]) {
+        acc[sector] = {
+          count: 0,
+          validated: 0,
+          revenue: 0
+        };
+      }
+      acc[sector].count++;
+      if (ticket.status === 'validated') {
+        acc[sector].validated++;
+      }
+      acc[sector].revenue += parseFloat(ticket.totalAmount || 0);
+      return acc;
+    }, {});
+
+    // Agrupar por operador
+    const byOperator = tickets.reduce((acc, ticket) => {
+      if (ticket.validatedBy) {
+        const operatorName = ticket.validator 
+          ? `${ticket.validator.firstName} ${ticket.validator.lastName}` 
+          : `Operador ${ticket.validatedBy}`;
+        
+        if (!acc[operatorName]) {
+          acc[operatorName] = {
+            count: 0,
+            lastValidation: null
+          };
+        }
+        acc[operatorName].count++;
+        
+        if (!acc[operatorName].lastValidation || 
+            new Date(ticket.validatedAt) > new Date(acc[operatorName].lastValidation)) {
+          acc[operatorName].lastValidation = ticket.validatedAt;
+        }
+      }
+      return acc;
+    }, {});
+
+    res.json({
+      success: true,
+      data: {
+        tickets: tickets.map(t => ({
+          id: t.id,
+          ticketCode: t.ticketCode,
+          eventName: t.event?.name,
+          eventDate: t.event?.date,
+          sector: t.ticketType?.sector,
+          ticketType: t.ticketType?.name,
+          price: t.price,
+          totalAmount: t.totalAmount,
+          status: t.status,
+          buyerName: t.buyerName,
+          buyerEmail: t.buyerEmail,
+          buyerDocument: t.buyerDocument,
+          validatedBy: t.validator 
+            ? `${t.validator.firstName} ${t.validator.lastName}` 
+            : null,
+          validatedAt: t.validatedAt,
+          purchaseDate: t.purchaseDate
+        })),
+        stats,
+        byEvent: Object.entries(byEvent).map(([name, data]) => ({
+          eventName: name,
+          eventDate: data.event?.date,
+          venue: data.event?.venue,
+          totalCheckins: data.count,
+          validated: data.validated,
+          revenue: data.revenue
+        })),
+        bySector: Object.entries(bySector).map(([sector, data]) => ({
+          sector,
+          totalCheckins: data.count,
+          validated: data.validated,
+          revenue: data.revenue
+        })),
+        byOperator: Object.entries(byOperator).map(([name, data]) => ({
+          operatorName: name,
+          totalValidations: data.count,
+          lastValidation: data.lastValidation
+        })),
+        filters: {
+          eventId,
+          startDate,
+          endDate,
+          status,
+          sector,
+          ticketTypeId,
+          operatorId
+        },
+        generatedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error en getAttendanceReport:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener reporte de asistencia',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Crear un nuevo cliente
+ * @route   POST /api/admin/clients
+ * @access  Private/Admin
+ */
+export const createClient = async (req, res) => {
+  try {
+    const { email, password, firstName, lastName, phone, document } = req.body;
+
+    // Verificar si el email ya existe
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'El email ya está registrado'
+      });
+    }
+
+    // Crear nuevo cliente
+    const cliente = await Cliente.create({
+      email,
+      password,
+      firstName,
+      lastName,
+      phone,
+      document,
+      isActive: true
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Cliente creado exitosamente',
+      data: cliente.toPublicJSON()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error al crear cliente',
+      error: error.message
+    });
+  }
+};
+

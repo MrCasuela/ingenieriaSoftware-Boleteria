@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Obtener Token</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+            display: none;
+        }
+        .token {
+            word-break: break-all;
+            background: #fff;
+            padding: 10px;
+            border: 1px dashed #ccc;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .error {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔑 Obtener Token de Autenticación</h1>
+        
+        <input type="email" id="email" placeholder="Email" value="admin1@ticketvue.com">
+        <input type="password" id="password" placeholder="Contraseña" value="admin123">
+        
+        <select id="userType" style="width: 100%; padding: 12px; margin: 10px 0; font-size: 16px;">
+            <option value="Administrador">Administrador</option>
+            <option value="Operador">Operador</option>
+            <option value="Cliente">Cliente</option>
+        </select>
+        
+        <button onclick="getToken()">Obtener Token</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function getToken() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const userType = document.getElementById('userType').value;
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/users/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password,
+                        user_type: userType
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.data && data.data.token) {
+                    const token = data.data.token;
+                    const user = data.data.user;
+                    
+                    // Guardar en localStorage
+                    localStorage.setItem('apiToken', token);
+                    
+                    resultDiv.className = '';
+                    resultDiv.innerHTML = `
+                        <h3>✅ Login Exitoso!</h3>
+                        <p><strong>Usuario:</strong> ${user.firstName} ${user.lastName}</p>
+                        <p><strong>Email:</strong> ${user.email}</p>
+                        <p><strong>Tipo:</strong> ${user.userType}</p>
+                        <h4>Token:</h4>
+                        <div class="token">${token}</div>
+                        <p style="color: green;">✅ Token guardado en localStorage como 'apiToken'</p>
+                        <p>Ahora puedes usar la aplicación normalmente.</p>
+                    `;
+                    resultDiv.style.display = 'block';
+                } else {
+                    throw new Error(data.message || 'Error desconocido');
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Error</h3>
+                    <p>${error.message}</p>
+                    <p>Verifica que el backend esté corriendo en http://localhost:3000</p>
+                `;
+                resultDiv.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

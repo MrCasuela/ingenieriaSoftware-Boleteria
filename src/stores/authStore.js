@@ -245,7 +245,7 @@ export const useAuthStore = defineStore('auth', {
 
           return {
             success: true,
-            userType: userData.userType,
+            userType: this.userType,  // Usar el valor normalizado en minúsculas
             user: this.user
           }
         } else {

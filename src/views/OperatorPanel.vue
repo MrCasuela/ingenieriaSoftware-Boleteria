@@ -279,7 +279,7 @@ export default {
       // La detección ocurrirá solo cuando realmente se detecte un código
     }
 
-    const simulateQRDetection = () => {
+    const simulateQRDetection = async () => {
       // Esta función solo se llamará cuando realmente se detecte un QR
       const scenarios = [
         { weight: 50, type: 'valid' },
@@ -325,7 +325,7 @@ export default {
             }
             
             // Registrar en auditoría
-            AuditService.logValidation(
+            await AuditService.logValidation(
               ticketCode,
               authStore.userName,
               validationResult.valid,
@@ -356,7 +356,7 @@ export default {
             playErrorSound()
             vibrateDevice([200, 100, 200])
             
-            AuditService.logValidation(
+            await AuditService.logValidation(
               ticketCode,
               authStore.userName,
               false,
@@ -383,7 +383,7 @@ export default {
           playErrorSound()
           vibrateDevice([200, 100, 200])
           
-          AuditService.logValidation(
+          await AuditService.logValidation(
             ticketCode,
             authStore.userName,
             false,
@@ -406,7 +406,7 @@ export default {
           playErrorSound()
           vibrateDevice([200, 100, 200])
           
-          AuditService.logValidation(
+          await AuditService.logValidation(
             ticketCode,
             authStore.userName,
             false,
@@ -429,7 +429,7 @@ export default {
           playErrorSound()
           vibrateDevice([200, 100, 200, 100, 200])
           
-          AuditService.logValidation(
+          await AuditService.logValidation(
             ticketCode,
             authStore.userName,
             false,
@@ -545,7 +545,7 @@ export default {
       }
     }
 
-    const validateManual = () => {
+    const validateManual = async () => {
       const code = manualInput.value.trim()
       
       if (!code) {
@@ -559,7 +559,7 @@ export default {
       const validationResult = ticketStore.validateTicket(code, authStore.userName)
       
       // Registrar en auditoría
-      AuditService.logValidation(
+      await AuditService.logValidation(
         code,
         authStore.userName,
         validationResult.valid,
@@ -630,7 +630,7 @@ export default {
           playErrorSound()
           vibrateDevice([200, 100, 200])
           
-          AuditService.logValidation(
+          await AuditService.logValidation(
             `RUT-${rut}`,
             authStore.userName,
             false,
@@ -678,7 +678,7 @@ export default {
           playSuccessSound()
           vibrateDevice([100])
           
-          AuditService.logValidation(
+          await AuditService.logValidation(
             ticket.codigo,
             authStore.userName,
             true,
@@ -733,7 +733,9 @@ export default {
 
     const playErrorSound = () => {
       try {
-        const audio = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU')
+        // Usar un beep simple para el error (frecuencia más baja que el éxito)
+        const audio = new Audio('data:audio/wav;base64,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')
+        audio.volume = 0.3 // Volumen más bajo para el error
         audio.play()
       } catch (error) {
         console.log('🔇 Audio no disponible')

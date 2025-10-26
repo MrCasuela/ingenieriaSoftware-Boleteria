@@ -10,6 +10,7 @@ import Administrador from './Administrador.js';
 import Event from './Event.js';
 import TicketType from './TicketType.js';
 import Ticket from './Ticket.js';
+import AuditLog from './AuditLog.js';
 
 /**
  * Definir relaciones entre modelos
@@ -47,22 +48,22 @@ Ticket.belongsTo(TicketType, {
   as: 'ticketType'
 });
 
-// Cliente - Ticket (1:N) - Comprador
-Cliente.hasMany(Ticket, {
+// User - Ticket (1:N) - Comprador
+User.hasMany(Ticket, {
   foreignKey: 'buyerId',
-  as: 'purchasedTickets'
+  as: 'tickets'
 });
-Ticket.belongsTo(Cliente, {
+Ticket.belongsTo(User, {
   foreignKey: 'buyerId',
-  as: 'buyer'
+  as: 'user'
 });
 
-// Operador - Ticket (1:N) - Validador
-Operador.hasMany(Ticket, {
+// User - Ticket (1:N) - Validador
+User.hasMany(Ticket, {
   foreignKey: 'validatedBy',
   as: 'validatedTickets'
 });
-Ticket.belongsTo(Operador, {
+Ticket.belongsTo(User, {
   foreignKey: 'validatedBy',
   as: 'operatorValidator'
 });
@@ -77,6 +78,16 @@ Ticket.belongsTo(User, {
   as: 'validator'
 });
 
+// Event - AuditLog (1:N)
+Event.hasMany(AuditLog, {
+  foreignKey: 'event_id',
+  as: 'auditLogs'
+});
+AuditLog.belongsTo(Event, {
+  foreignKey: 'event_id',
+  as: 'event'
+});
+
 export {
   User,
   Cliente,
@@ -84,5 +95,6 @@ export {
   Administrador,
   Event,
   TicketType,
-  Ticket
+  Ticket,
+  AuditLog
 };

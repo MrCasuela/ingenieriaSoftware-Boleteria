@@ -582,6 +582,9 @@
       <div v-if="activeTab === 'stats'" class="tab-content">
         <div class="section-header">
           <h2>📈 Estadísticas y Reportes</h2>
+          <button @click="showPDFDownloadModal = true" class="btn-primary">
+            📄 Descargar Reporte PDF
+          </button>
         </div>
 
         <div class="stats-grid">
@@ -933,17 +936,303 @@
           </div>
         </div>
       </div>
+
+      <!-- Tab: Historial de Auditoría -->
+      <div v-if="activeTab === 'history'" class="tab-content">
+        <div class="section-header">
+          <h2>📋 Historial de Auditoría y Validaciones</h2>
+          <div class="history-actions">
+            <button @click="refreshAuditData" class="btn-info" :disabled="loadingAudit">
+              🔄 {{ loadingAudit ? 'Actualizando...' : 'Actualizar' }}
+            </button>
+            <button @click="generatePDFReport" class="btn-primary" :disabled="!auditStats.total || generatingPDF">
+              📄 {{ generatingPDF ? 'Generando PDF...' : 'Generar Reporte PDF' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Estadísticas Generales -->
+        <div class="stats-grid" style="margin-bottom: 2rem;">
+          <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-info">
+              <h3>Validaciones Exitosas</h3>
+              <p class="stat-number">{{ auditStats.approved || 0 }}</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">❌</div>
+            <div class="stat-info">
+              <h3>Validaciones Rechazadas</h3>
+              <p class="stat-number">{{ auditStats.rejected || 0 }}</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">⚠️</div>
+            <div class="stat-info">
+              <h3>Errores</h3>
+              <p class="stat-number">{{ auditStats.errors || 0 }}</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🚨</div>
+            <div class="stat-info">
+              <h3>Fraudes Detectados</h3>
+              <p class="stat-number">{{ auditStats.frauds || 0 }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estadísticas por Tipo de Validación -->
+        <div class="audit-breakdown">
+          <div class="breakdown-card">
+            <h3>📊 Por Tipo de Validación</h3>
+            <div class="breakdown-items">
+              <div class="breakdown-item">
+                <span class="breakdown-label">📱 Escaneo QR</span>
+                <span class="breakdown-value">{{ auditStats.byType?.qr || 0 }}</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="breakdown-label">⌨️ Ingreso Manual</span>
+                <span class="breakdown-value">{{ auditStats.byType?.manual || 0 }}</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="breakdown-label">👤 Por RUT</span>
+                <span class="breakdown-value">{{ auditStats.byType?.rut || 0 }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="breakdown-card">
+            <h3>🎫 Por Categoría de Ticket</h3>
+            <div class="breakdown-items">
+              <div class="breakdown-item">
+                <span class="breakdown-label">🎟️ Normal</span>
+                <span class="breakdown-value">{{ auditStats.byCategory?.normal || 0 }}</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="breakdown-label">⭐ VIP</span>
+                <span class="breakdown-value">{{ auditStats.byCategory?.vip || 0 }}</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="breakdown-label">👥 General</span>
+                <span class="breakdown-value">{{ auditStats.byCategory?.general || 0 }}</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="breakdown-label">💎 Premium</span>
+                <span class="breakdown-value">{{ auditStats.byCategory?.premium || 0 }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtros de Búsqueda -->
+        <div class="audit-filters">
+          <h3>🔍 Filtros de Búsqueda</h3>
+          <div class="filters-grid">
+            <div class="filter-group">
+              <label>Evento:</label>
+              <select v-model="auditFilters.eventId">
+                <option value="">Todos los eventos</option>
+                <option v-for="event in events" :key="event.id" :value="event.id">
+                  {{ event.name }}
+                </option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Tipo de Validación:</label>
+              <select v-model="auditFilters.validationType">
+                <option value="">Todos</option>
+                <option value="qr">📱 Escaneo QR</option>
+                <option value="manual">⌨️ Ingreso Manual</option>
+                <option value="rut">👤 Por RUT</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Resultado:</label>
+              <select v-model="auditFilters.validationResult">
+                <option value="">Todos</option>
+                <option value="approved">✅ Aprobados</option>
+                <option value="rejected">❌ Rechazados</option>
+                <option value="error">⚠️ Errores</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Operador:</label>
+              <input 
+                v-model="auditFilters.operator" 
+                type="text" 
+                placeholder="Nombre del operador..."
+              />
+            </div>
+            <div class="filter-group">
+              <label>Desde:</label>
+              <input v-model="auditFilters.startDate" type="date" />
+            </div>
+            <div class="filter-group">
+              <label>Hasta:</label>
+              <input v-model="auditFilters.endDate" type="date" />
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button @click="applyAuditFilters" class="btn-primary">
+              🔍 Buscar
+            </button>
+            <button @click="clearAuditFilters" class="btn-secondary">
+              🗑️ Limpiar Filtros
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabla de Registros de Auditoría -->
+        <div class="audit-table-container">
+          <h3>📝 Registros de Validaciones ({{ auditLogs.length }} registros)</h3>
+          
+          <div v-if="loadingAudit" class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Cargando historial...</p>
+          </div>
+
+          <div v-else-if="auditLogs.length === 0" class="no-data">
+            <p>📭 No hay registros de auditoría que coincidan con los filtros.</p>
+          </div>
+
+          <table v-else class="audit-table">
+            <thead>
+              <tr>
+                <th>Fecha/Hora</th>
+                <th>Código Ticket</th>
+                <th>Operador</th>
+                <th>Evento</th>
+                <th>Tipo</th>
+                <th>Categoría</th>
+                <th>Resultado</th>
+                <th>Mensaje</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="log in auditLogs" :key="log.id">
+                <td>{{ formatDateTime(log.timestamp) }}</td>
+                <td><code>{{ log.ticket_code }}</code></td>
+                <td>{{ log.operator_name }}</td>
+                <td>{{ log.event_name || 'N/A' }}</td>
+                <td>
+                  <span class="type-badge" :class="'type-' + log.validation_type">
+                    {{ getValidationTypeLabel(log.validation_type) }}
+                  </span>
+                </td>
+                <td>
+                  <span class="category-badge" :class="'category-' + log.ticket_category">
+                    {{ log.ticket_category || 'N/A' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="result-badge" :class="'result-' + log.validation_result">
+                    {{ getValidationResultLabel(log.validation_result) }}
+                  </span>
+                </td>
+                <td class="message-cell">
+                  {{ log.message }}
+                  <span v-if="log.fraud_detected" class="fraud-badge">🚨 FRAUDE</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Paginación -->
+          <div v-if="auditPagination.totalPages > 1" class="pagination">
+            <button 
+              @click="goToAuditPage(auditPagination.page - 1)"
+              :disabled="auditPagination.page === 1"
+              class="btn-pagination"
+            >
+              ← Anterior
+            </button>
+            <span class="pagination-info">
+              Página {{ auditPagination.page }} de {{ auditPagination.totalPages }}
+            </span>
+            <button 
+              @click="goToAuditPage(auditPagination.page + 1)"
+              :disabled="auditPagination.page >= auditPagination.totalPages"
+              class="btn-pagination"
+            >
+              Siguiente →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Descarga de Reporte PDF -->
+    <div v-if="showPDFDownloadModal" class="modal-overlay" @click.self="showPDFDownloadModal = false">
+      <div class="modal-content modal-small">
+        <div class="modal-header">
+          <h3>📄 Descargar Reporte PDF de Auditoría</h3>
+          <button @click="showPDFDownloadModal = false" class="btn-close">✖</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Seleccione un Evento *</label>
+            <select v-model.number="pdfEventId" required class="form-control">
+              <option value="">-- Seleccione un evento --</option>
+              <option v-for="event in events" :key="event.id" :value="event.id">
+                {{ event.name }} - {{ formatDate(event.date) }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fecha Inicio (Opcional)</label>
+              <input v-model="pdfStartDate" type="date" class="form-control" />
+            </div>
+            <div class="form-group">
+              <label>Fecha Fin (Opcional)</label>
+              <input v-model="pdfEndDate" type="date" class="form-control" />
+            </div>
+          </div>
+
+          <div v-if="pdfDownloading" class="loading-message">
+            <div class="spinner"></div>
+            <p>Generando reporte PDF... Por favor espera.</p>
+          </div>
+
+          <div v-if="pdfError" class="alert alert-danger">
+            ❌ {{ pdfError }}
+          </div>
+
+          <div v-if="pdfSuccess" class="alert alert-success">
+            ✅ {{ pdfSuccess }}
+          </div>
+        </div>
+        <div class="form-actions">
+          <button 
+            @click="showPDFDownloadModal = false" 
+            class="btn-secondary"
+            :disabled="pdfDownloading"
+          >
+            Cancelar
+          </button>
+          <button 
+            @click="downloadPDFReport" 
+            class="btn-primary"
+            :disabled="!pdfEventId || pdfDownloading"
+          >
+            📥 Descargar PDF
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import * as ticketTypeApi from '../services/ticketTypeApiService'
 import * as eventApi from '../services/eventApiService'
-import { reportService } from '../services/apiService'
+import { AuditService } from '../services/auditService'
 
 export default {
   name: 'AdminPanel',
@@ -981,31 +1270,51 @@ export default {
       shift: 'mañana'
     })
 
-
-    // Reportes (HU6)
-    const reportData = ref(null)
-    const reportFilters = ref({
+    // Audit/History State
+    const auditLogs = ref([])
+    const auditStats = ref({
+      total: 0,
+      approved: 0,
+      rejected: 0,
+      errors: 0,
+      frauds: 0,
+      byType: { qr: 0, manual: 0, rut: 0 },
+      byCategory: { normal: 0, vip: 0, general: 0, premium: 0, other: 0 }
+    })
+    const auditFilters = ref({
       eventId: '',
+      validationType: '',
+      validationResult: '',
+      operator: '',
       startDate: '',
       endDate: '',
-      status: '',
-      sector: '',
-      ticketTypeId: '',
-      operatorId: ''
+      page: 1,
+      limit: 50
     })
-    const isExporting = ref(false)
-    const lastUpdateTime = ref('')
+    const auditPagination = ref({
+      page: 1,
+      totalPages: 1,
+      total: 0
+    })
+    const loadingAudit = ref(false)
+    const generatingPDF = ref(false)
 
+    // PDF Download State
+    const showPDFDownloadModal = ref(false)
+    const pdfEventId = ref('')
+    const pdfStartDate = ref('')
+    const pdfEndDate = ref('')
+    const pdfDownloading = ref(false)
+    const pdfError = ref('')
+    const pdfSuccess = ref('')
 
     // Tabs
     const tabs = [
       { id: 'events', label: 'Eventos', icon: '🎭' },
       { id: 'ticketTypes', label: 'Tipos de Ticket', icon: '🎫' },
       { id: 'users', label: 'Usuarios', icon: '👥' },
-
-      { id: 'reports', label: 'Reportes', icon: '📊' },
-
-      { id: 'stats', label: 'Estadísticas', icon: '📈' }
+      { id: 'stats', label: 'Estadísticas', icon: '📈' },
+      { id: 'history', label: 'Historial', icon: '📋' }
     ]
 
     // Event Form
@@ -1260,32 +1569,93 @@ export default {
       showEventForm.value = true
     }
 
-    const saveEvent = () => {
-      if (editingEvent.value) {
-        // Actualizar evento existente
-        const index = events.value.findIndex(e => e.id === editingEvent.value)
-        if (index !== -1) {
-          events.value[index] = { ...eventForm.value, id: editingEvent.value }
+    const saveEvent = async () => {
+      try {
+        // Validar campos requeridos
+        if (!eventForm.value.name || !eventForm.value.description || !eventForm.value.date || 
+            !eventForm.value.time || !eventForm.value.venue || !eventForm.value.category || 
+            !eventForm.value.totalCapacity) {
+          alert('⚠️ Por favor completa todos los campos requeridos');
+          return;
         }
-      } else {
-        // Crear nuevo evento
-        const newEvent = {
-          ...eventForm.value,
-          id: Date.now(),
-          minPrice: 0 // Se calculará según los tipos de ticket
+
+        // Combinar fecha y hora
+        const dateTimeString = `${eventForm.value.date}T${eventForm.value.time}:00`;
+        
+        const eventData = {
+          name: eventForm.value.name,
+          description: eventForm.value.description,
+          date: dateTimeString,
+          location: `${eventForm.value.venue}${eventForm.value.city ? ', ' + eventForm.value.city : ''}`,
+          image: eventForm.value.imageUrl || 'https://via.placeholder.com/400x200',
+          category: eventForm.value.category,
+          totalCapacity: parseInt(eventForm.value.totalCapacity) || 0,
+          status: 'published'
+        };
+
+        console.log('📤 Enviando evento al backend:', eventData);
+
+        if (editingEvent.value) {
+          // Actualizar evento existente
+          const response = await eventApi.updateEvent(editingEvent.value, eventData);
+          
+          if (response.success) {
+            const index = events.value.findIndex(e => e.id === editingEvent.value);
+            if (index !== -1) {
+              events.value[index] = {
+                id: response.data.id,
+                name: response.data.name,
+                description: response.data.description,
+                date: response.data.date,
+                venue: response.data.location,
+                imageUrl: response.data.image,
+                category: response.data.category,
+                totalCapacity: response.data.totalCapacity,
+                minPrice: 0
+              };
+            }
+            alert('✅ Evento actualizado exitosamente');
+          }
+        } else {
+          // Crear nuevo evento
+          const response = await eventApi.createEvent(eventData);
+          
+          console.log('📥 Respuesta del backend:', response);
+          
+          if (response.success) {
+            // Agregar el evento creado a la lista local
+            events.value.push({
+              id: response.data.id,
+              name: response.data.name,
+              description: response.data.description,
+              date: response.data.date,
+              venue: response.data.location,
+              imageUrl: response.data.image,
+              category: response.data.category,
+              totalCapacity: response.data.totalCapacity,
+              minPrice: 0
+            });
+            alert('✅ Evento creado exitosamente');
+          }
         }
-        events.value.push(newEvent)
+        
+        closeEventForm();
+      } catch (error) {
+        console.error('❌ Error al guardar evento:', error);
+        alert('❌ Error al guardar el evento: ' + (error.message || 'Error desconocido'));
       }
-      saveEvents()
-      closeEventForm()
     }
 
-    const deleteEvent = (eventId) => {
+    const deleteEvent = async (eventId) => {
       if (confirm('¿Estás seguro de eliminar este evento? También se eliminarán todos sus tipos de ticket.')) {
-        events.value = events.value.filter(e => e.id !== eventId)
-        ticketTypes.value = ticketTypes.value.filter(tt => tt.eventId !== eventId)
-        saveEvents()
-        saveTicketTypes()
+        try {
+          await eventApi.deleteEvent(eventId)
+          events.value = events.value.filter(e => e.id !== eventId)
+          ticketTypes.value = ticketTypes.value.filter(tt => tt.eventId !== eventId)
+        } catch (error) {
+          console.error('Error al eliminar evento:', error)
+          alert('Error al eliminar el evento: ' + (error.message || 'Error desconocido'))
+        }
       }
     }
 
@@ -1811,94 +2181,182 @@ export default {
       router.push('/')
     }
 
-    // ========== FUNCIONES DE REPORTES (HU6) ==========
-
-    const loadReportData = async () => {
+    // ==================== FUNCIONES DE AUDITORÍA ====================
+    
+    /**
+     * Carga los datos de auditoría desde el backend
+     */
+    const loadAuditData = async () => {
+      loadingAudit.value = true
       try {
-        console.log('🔍 Cargando reporte con filtros:', reportFilters.value)
+        // Cargar logs con filtros
+        const logsResponse = await AuditService.getAuditHistory(auditFilters.value)
+        auditLogs.value = logsResponse.logs || []
+        auditPagination.value = logsResponse.pagination || { page: 1, totalPages: 1, total: 0 }
         
-        const data = await reportService.getAttendanceReport(reportFilters.value)
-        reportData.value = data
+        // Cargar estadísticas
+        const statsFilters = {
+          eventId: auditFilters.value.eventId,
+          startDate: auditFilters.value.startDate,
+          endDate: auditFilters.value.endDate
+        }
+        const statsResponse = await AuditService.getStatistics(statsFilters)
+        auditStats.value = statsResponse
         
-        // Actualizar tiempo de última actualización
-        lastUpdateTime.value = new Date().toLocaleString('es-ES')
-        
-        console.log('✅ Reporte cargado:', data)
+        console.log('✅ Datos de auditoría cargados:', { logs: auditLogs.value.length, stats: auditStats.value })
       } catch (error) {
-        console.error('❌ Error al cargar reporte:', error)
-        alert('Error al cargar el reporte. Por favor intenta nuevamente.')
+        console.error('❌ Error al cargar datos de auditoría:', error)
+        alert('Error al cargar el historial de auditoría. Verifique la conexión.')
+      } finally {
+        loadingAudit.value = false
       }
     }
 
-    const clearFilters = () => {
-      reportFilters.value = {
+    /**
+     * Refresca los datos de auditoría
+     */
+    const refreshAuditData = async () => {
+      await loadAuditData()
+    }
+
+    /**
+     * Aplica los filtros de auditoría
+     */
+    const applyAuditFilters = async () => {
+      auditFilters.value.page = 1 // Reset a primera página
+      await loadAuditData()
+    }
+
+    /**
+     * Limpia los filtros de auditoría
+     */
+    const clearAuditFilters = async () => {
+      auditFilters.value = {
         eventId: '',
+        validationType: '',
+        validationResult: '',
+        operator: '',
         startDate: '',
         endDate: '',
-        status: '',
-        sector: '',
-        ticketTypeId: '',
-        operatorId: ''
+        page: 1,
+        limit: 50
       }
-      reportData.value = null
-      lastUpdateTime.value = ''
+      await loadAuditData()
     }
 
-    const exportCSV = async () => {
+    /**
+     * Navega a una página específica de auditoría
+     */
+    const goToAuditPage = async (page) => {
+      if (page < 1 || page > auditPagination.value.totalPages) return
+      auditFilters.value.page = page
+      await loadAuditData()
+    }
+
+    /**
+     * Genera y descarga un reporte PDF
+     */
+    const generatePDFReport = async () => {
+      if (!auditStats.value.total) {
+        alert('No hay datos para generar el reporte.')
+        return
+      }
+      
+      generatingPDF.value = true
       try {
-        isExporting.value = true
-        console.log('📄 Exportando CSV con filtros:', reportFilters.value)
+        const eventId = auditFilters.value.eventId || null
+        const filters = {
+          startDate: auditFilters.value.startDate,
+          endDate: auditFilters.value.endDate
+        }
         
-        await reportService.exportToCSV(reportFilters.value)
-        
-        console.log('✅ CSV exportado exitosamente')
-        alert('✅ Reporte CSV descargado exitosamente')
+        await AuditService.generatePDFReport(eventId, filters)
+        alert('✅ Reporte PDF generado y descargado exitosamente.')
       } catch (error) {
-        console.error('❌ Error al exportar CSV:', error)
-        alert('Error al exportar el reporte CSV. Por favor intenta nuevamente.')
+        console.error('❌ Error al generar PDF:', error)
+        alert('Error al generar el reporte PDF. Intente nuevamente.')
       } finally {
-        isExporting.value = false
+        generatingPDF.value = false
       }
     }
 
-    const exportStatsCSV = async () => {
+    /**
+     * Descarga reporte PDF desde modal de estadísticas
+     */
+    const downloadPDFReport = async () => {
+      if (!pdfEventId.value) {
+        pdfError.value = 'Por favor selecciona un evento'
+        return
+      }
+
+      pdfDownloading.value = true
+      pdfError.value = ''
+      pdfSuccess.value = ''
+
       try {
-        isExporting.value = true
-        console.log('📊 Exportando estadísticas CSV con filtros:', reportFilters.value)
-        
-        await reportService.exportStatsToCSV(reportFilters.value)
-        
-        console.log('✅ Estadísticas CSV exportadas exitosamente')
-        alert('✅ Estadísticas CSV descargadas exitosamente')
+        const response = await fetch('http://localhost:3000/api/audit/generate-pdf', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            eventId: pdfEventId.value,
+            startDate: pdfStartDate.value || undefined,
+            endDate: pdfEndDate.value || undefined
+          })
+        })
+
+        if (response.ok) {
+          // Obtener el blob del PDF
+          const blob = await response.blob()
+          
+          // Crear URL del blob
+          const url = window.URL.createObjectURL(blob)
+          
+          // Obtener nombre del evento
+          const event = events.value.find(e => e.id === pdfEventId.value)
+          const eventName = event ? event.name.replace(/\s/g, '-') : 'evento'
+          
+          // Crear link temporal y hacer click para descargar
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `reporte-auditoria-${eventName}-${Date.now()}.pdf`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          
+          // Liberar memoria
+          window.URL.revokeObjectURL(url)
+          
+          pdfSuccess.value = '✅ PDF descargado exitosamente'
+          
+          // Cerrar modal después de 2 segundos
+          setTimeout(() => {
+            showPDFDownloadModal.value = false
+            pdfSuccess.value = ''
+            pdfEventId.value = ''
+            pdfStartDate.value = ''
+            pdfEndDate.value = ''
+          }, 2000)
+        } else {
+          const error = await response.json()
+          pdfError.value = error.message || 'Error al generar el PDF'
+        }
       } catch (error) {
-        console.error('❌ Error al exportar estadísticas CSV:', error)
-        alert('Error al exportar estadísticas CSV. Por favor intenta nuevamente.')
+        console.error('❌ Error al descargar PDF:', error)
+        pdfError.value = 'Error de conexión al generar el PDF'
       } finally {
-        isExporting.value = false
+        pdfDownloading.value = false
       }
     }
 
-    const exportPDF = async () => {
-      try {
-        isExporting.value = true
-        console.log('📕 Exportando PDF con filtros:', reportFilters.value)
-        
-        await reportService.exportToPDF(reportFilters.value)
-        
-        console.log('✅ PDF exportado exitosamente')
-        alert('✅ Reporte PDF descargado exitosamente')
-      } catch (error) {
-        console.error('❌ Error al exportar PDF:', error)
-        alert('Error al exportar el reporte PDF. Por favor intenta nuevamente.')
-      } finally {
-        isExporting.value = false
-      }
-    }
-
-    const formatDateTime = (dateString) => {
-      if (!dateString) return 'N/A'
-      const date = new Date(dateString)
-      return date.toLocaleString('es-ES', {
+    /**
+     * Formatea fecha y hora
+     */
+    const formatDateTime = (timestamp) => {
+      if (!timestamp) return 'N/A'
+      const date = new Date(timestamp)
+      return date.toLocaleString('es-CL', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -1907,9 +2365,44 @@ export default {
       })
     }
 
+    /**
+     * Obtiene etiqueta del tipo de validación
+     */
+    const getValidationTypeLabel = (type) => {
+      const labels = {
+        qr: '📱 QR',
+        manual: '⌨️ Manual',
+        rut: '👤 RUT'
+      }
+      return labels[type] || type
+    }
+
+    /**
+     * Obtiene etiqueta del resultado de validación
+     */
+    const getValidationResultLabel = (result) => {
+      const labels = {
+        approved: '✅ Aprobado',
+        rejected: '❌ Rechazado',
+        error: '⚠️ Error'
+      }
+      return labels[result] || result
+    }
+
     // Lifecycle
     onMounted(() => {
       loadData()
+      // Cargar datos de auditoría si el tab está activo
+      if (activeTab.value === 'history') {
+        loadAuditData()
+      }
+    })
+
+    // Watcher para cargar datos de auditoría cuando se cambia a la pestaña de historial
+    watch(activeTab, (newTab) => {
+      if (newTab === 'history') {
+        loadAuditData()
+      }
     })
 
     return {
@@ -1966,21 +2459,32 @@ export default {
       confirmRoleChange,
       toggleUserStatus,
       loadUsers,
-
       authStore,
-      // Reportes (HU6)
-      reportData,
-      reportFilters,
-      isExporting,
-      lastUpdateTime,
-      loadReportData,
-      clearFilters,
-      exportCSV,
-      exportStatsCSV,
-      exportPDF,
-      formatDateTime
-      authStore
-
+      // Auditoría
+      auditLogs,
+      auditStats,
+      auditFilters,
+      auditPagination,
+      loadingAudit,
+      generatingPDF,
+      loadAuditData,
+      refreshAuditData,
+      applyAuditFilters,
+      clearAuditFilters,
+      goToAuditPage,
+      generatePDFReport,
+      formatDateTime,
+      getValidationTypeLabel,
+      getValidationResultLabel,
+      // PDF Download
+      showPDFDownloadModal,
+      pdfEventId,
+      pdfStartDate,
+      pdfEndDate,
+      pdfDownloading,
+      pdfError,
+      pdfSuccess,
+      downloadPDFReport
     }
   }
 }
@@ -2866,261 +3370,440 @@ export default {
   color: #856404;
 }
 
+/* ==================== ESTILOS DE AUDITORÍA/HISTORIAL ==================== */
 
-/* ========== ESTILOS REPORTES (HU6) ========== */
+.history-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 
-.filters-section {
+.audit-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 2rem;
+}
+
+.breakdown-card {
   background: white;
-  padding: 1.5rem;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.breakdown-card h3 {
+  font-size: 16px;
+  margin-bottom: 15px;
+  color: #333;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 10px;
+}
+
+.breakdown-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.breakdown-item:hover {
+  background: #e9ecef;
+  transform: translateX(5px);
+}
+
+.breakdown-label {
+  font-size: 14px;
+  color: #495057;
+}
+
+.breakdown-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.audit-filters {
+  background: white;
+  padding: 25px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin-bottom: 2rem;
 }
 
-.filters-section h3 {
-  margin-bottom: 1rem;
-  color: #2c3e50;
+.audit-filters h3 {
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: #333;
 }
 
 .filters-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  align-items: end;
+  gap: 15px;
+  margin-bottom: 15px;
 }
 
 .filter-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
 }
 
 .filter-group label {
+  font-size: 13px;
   font-weight: 600;
-  color: #555;
-  font-size: 0.9rem;
+  color: #495057;
+  margin-bottom: 5px;
+}
+
+.filter-group input,
+.filter-group select {
+  padding: 8px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .filter-actions {
   display: flex;
-  gap: 0.5rem;
-  align-items: end;
+  gap: 10px;
+  justify-content: flex-end;
 }
 
-.report-stats-section {
+.audit-table-container {
   background: white;
-  padding: 1.5rem;
+  padding: 25px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-}
-
-.report-stats-section h3 {
-  margin-bottom: 1rem;
-  color: #2c3e50;
-}
-
-.stat-card.success {
-  background: linear-gradient(135deg, #4caf50 0%, #81c784 100%);
-  color: white;
-}
-
-.stat-card.warning {
-  background: linear-gradient(135deg, #ff9800 0%, #ffb74d 100%);
-  color: white;
-}
-
-.stat-card.danger {
-  background: linear-gradient(135deg, #f44336 0%, #e57373 100%);
-  color: white;
-}
-
-.stat-card.info {
-  background: linear-gradient(135deg, #2196f3 0%, #64b5f6 100%);
-  color: white;
-}
-
-.update-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 1rem;
-  padding: 1rem;
-  background: #f5f7fa;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.btn-refresh {
-  background: #667eea;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
-}
-
-.btn-refresh:hover {
-  background: #764ba2;
-  transform: translateY(-2px);
-}
-
-.export-section {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-}
-
-.export-section h3 {
-  margin-bottom: 1rem;
-  color: #2c3e50;
-}
-
-.export-buttons {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.btn-export {
-  flex: 1;
-  min-width: 200px;
-  padding: 1rem 1.5rem;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.btn-export:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-csv {
-  background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
-  color: white;
-}
-
-.btn-csv:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
-}
-
-.btn-pdf {
-  background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
-  color: white;
-}
-
-.btn-pdf:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
-}
-
-.report-section {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-}
-
-.report-section h3 {
-  margin-bottom: 1rem;
-  color: #2c3e50;
-}
-
-.report-table-container {
   overflow-x: auto;
 }
 
-.report-table {
+.audit-table-container h3 {
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.audit-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  min-width: 1000px;
 }
 
-.report-table thead {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+.audit-table thead {
+  background: #f8f9fa;
 }
 
-.report-table th {
-  padding: 1rem;
+.audit-table th {
+  padding: 12px;
   text-align: left;
   font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.report-table td {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e0e0e0;
+.audit-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f1f3f5;
+  font-size: 14px;
+  color: #495057;
 }
 
-.report-table tbody tr:hover {
-  background: #f5f7fa;
+.audit-table tbody tr {
+  transition: background 0.2s;
 }
 
-.badge-success {
-  background: #4caf50;
-  color: white;
-  padding: 0.25rem 0.75rem;
+.audit-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.audit-table code {
+  background: #e9ecef;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #495057;
+}
+
+.type-badge,
+.category-badge,
+.result-badge {
+  padding: 4px 10px;
   border-radius: 12px;
-  font-size: 0.85rem;
+  font-size: 12px;
   font-weight: 600;
+  display: inline-block;
 }
 
-.empty-state {
-  background: white;
-  padding: 3rem;
-  border-radius: 12px;
+.type-qr {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.type-manual {
+  background: #fff3e0;
+  color: #ef6c00;
+}
+
+.type-rut {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.category-normal {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.category-vip {
+  background: #fff9c4;
+  color: #f57f17;
+}
+
+.category-general {
+  background: #e1f5fe;
+  color: #0277bd;
+}
+
+.category-premium {
+  background: #fce4ec;
+  color: #c2185b;
+}
+
+.result-approved {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.result-rejected {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.result-error {
+  background: #fff3e0;
+  color: #ef6c00;
+}
+
+.message-cell {
+  max-width: 300px;
+  position: relative;
+}
+
+.fraud-badge {
+  display: inline-block;
+  background: #ffebee;
+  color: #c62828;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 8px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #dee2e6;
+}
+
+.btn-pagination {
+  padding: 8px 16px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-pagination:hover:not(:disabled) {
+  background: #5a67d8;
+  transform: translateY(-1px);
+}
+
+.btn-pagination:disabled {
+  background: #e9ecef;
+  color: #adb5bd;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: #495057;
+  font-weight: 500;
+}
+
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-spinner p {
+  color: #495057;
+  font-size: 14px;
+}
+
+.no-data {
   text-align: center;
-  color: #666;
-  font-size: 1.1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 60px;
+  color: #6c757d;
+  font-size: 16px;
 }
 
-.empty-state p {
+.no-data p {
   margin: 0;
 }
 
-/* Responsive para reportes */
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
   .filters-grid {
     grid-template-columns: 1fr;
   }
-
-  .filter-actions {
-    grid-column: 1;
+  
+  .audit-breakdown {
+    grid-template-columns: 1fr;
   }
-
-  .export-buttons {
-    flex-direction: column;
-  }
-
-  .btn-export {
+  
+  .history-actions {
     width: 100%;
-    min-width: auto;
   }
-
-  .report-table {
-    font-size: 0.8rem;
+  
+  .history-actions button {
+    flex: 1;
   }
-
-  .report-table th,
-  .report-table td {
-    padding: 0.5rem;
+  
+  .audit-table-container {
+    padding: 15px;
+  }
+  
+  .pagination {
+    flex-direction: column;
+    gap: 10px;
   }
 }
 
+/* ==================== ESTILOS PARA PDF MODAL ==================== */
+
+.loading-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.alert-success {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+  font-weight: 600;
+}
+
+.alert-danger {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  font-weight: 600;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
 </style>

@@ -105,10 +105,10 @@ export default {
           console.log('✅ Login exitoso. Tipo de usuario:', result.userType)
           
           // Redirigir según el tipo de usuario retornado
-          if (result.userType === 'Administrador') {
+          if (result.userType === 'administrador') {
             console.log('Redirigiendo a /admin/panel...')
             router.push('/admin/panel')
-          } else if (result.userType === 'Operador') {
+          } else if (result.userType === 'operador') {
             console.log('Redirigiendo a /operator/panel...')
             router.push('/operator/panel')
           } else {

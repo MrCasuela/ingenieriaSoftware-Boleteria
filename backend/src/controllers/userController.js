@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 /**
@@ -243,8 +244,8 @@ export const loginUser = async (req, res) => {
       });
     }
     
-    // Verificar contraseña (comparación directa sin hash)
-    const isValidPassword = password === user.password;
+    // Verificar contraseña usando bcrypt
+    const isValidPassword = await bcrypt.compare(password, user.password);
     
     if (!isValidPassword) {
       console.log('❌ Contraseña inválida para:', `"${(email || "").replace(/[\n\r]/g, "")}"`);
@@ -266,17 +267,7 @@ export const loginUser = async (req, res) => {
     console.log('✅ Login exitoso:', `"${(email || "").replace(/[\\n\\r]/g, "")}"`);
 
     // Generar token JWT
-
-    const token = jwt.sign(
-      { id: user.id, email: user.email, userType: user.userType }, 
-      process.env.JWT_SECRET || 'dev-secret-key-12345', 
-      { expiresIn: '7d' }
-    );
-
-    console.log('🔑 Token generado:', token ? token.substring(0, 30) + '...' : 'NULL');
-
-    const jwt = await import('jsonwebtoken');
-    const token = jwt.sign ? jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '7d' }) : null;
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '7d' });
 
 
     // No devolver la contraseña
@@ -286,14 +277,10 @@ export const loginUser = async (req, res) => {
     res.json({
       success: true,
       message: 'Login exitoso',
-
+      data: {
         user: userResponse,
-        token: token  // ← Token dentro de data
+        token
       }
-
-      data: userResponse,
-      token
-
     });
   } catch (error) {
     console.error('❌ Error en login:', error);

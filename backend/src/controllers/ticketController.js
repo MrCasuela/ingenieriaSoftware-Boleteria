@@ -348,30 +348,30 @@ export const createTicket = async (req, res) => {
       
       // Generar PDF del ticket
       const pdfBuffer = await generateTicketPDF({
-        ticketCode: ticket.ticketCode,
-        eventName: event?.name || 'Evento',
-        eventDate: event?.date || new Date(),
-        eventLocation: event?.location || event?.venue?.name || 'Por confirmar',
-        ticketTypeName: ticketType.name,
-        quantity: quantity,
-        price: price,
-        totalAmount: totalAmount,
-        buyerName: ticketData.buyerName || ticketData.buyer_name || `${user.firstName} ${user.lastName}`,
-        buyerEmail: ticketData.buyerEmail || ticketData.buyer_email || user.email,
-        buyerPhone: ticketData.buyerPhone || ticketData.buyer_phone || user.phone,
-        buyerDocument: ticketData.buyerDocument || ticketData.buyer_document || user.rut
+        ticketCode: fullTicket.ticketCode,
+        eventName: fullTicket.ticketType?.event?.name || 'Evento',
+        eventDate: fullTicket.ticketType?.event?.date || new Date(),
+        eventLocation: fullTicket.ticketType?.event?.location || fullTicket.ticketType?.event?.venue?.name || 'Por confirmar',
+        ticketTypeName: fullTicket.ticketType?.name || 'Entrada',
+        quantity: fullTicket.quantity || 1,
+        price: fullTicket.ticketType?.price || 0,
+        totalAmount: fullTicket.totalAmount || fullTicket.price || 0,
+        buyerName: fullTicket.buyerName || `${fullTicket.buyer?.firstName} ${fullTicket.buyer?.lastName}`,
+        buyerEmail: fullTicket.buyerEmail || fullTicket.buyer?.email,
+        buyerPhone: fullTicket.buyerPhone || fullTicket.buyer?.phone,
+        buyerDocument: fullTicket.buyerDocument || fullTicket.buyer?.rut
       });
       
       // Enviar email con PDF adjunto
       await sendTicketEmail({
-        email: ticketData.buyerEmail || ticketData.buyer_email || user.email,
-        firstName: user.firstName || ticketData.buyerName?.split(' ')[0] || 'Cliente',
-        lastName: user.lastName || '',
-        eventName: event?.name || 'Evento',
-        ticketCode: ticket.ticketCode
+        email: fullTicket.buyerEmail || fullTicket.buyer?.email,
+        firstName: fullTicket.buyer?.firstName || fullTicket.buyerName?.split(' ')[0] || 'Cliente',
+        lastName: fullTicket.buyer?.lastName || '',
+        eventName: fullTicket.ticketType?.event?.name || 'Evento',
+        ticketCode: fullTicket.ticketCode
       }, pdfBuffer);
       
-      console.log('✅ Email enviado exitosamente a:', ticketData.buyerEmail || user.email);
+      console.log('✅ Email enviado exitosamente a:', fullTicket.buyerEmail || fullTicket.buyer?.email);
     } catch (emailError) {
       // No bloquear la compra si falla el email
       console.error('⚠️ Error al enviar email (el ticket se creó correctamente):', emailError.message);

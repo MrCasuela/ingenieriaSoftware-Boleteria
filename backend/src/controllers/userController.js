@@ -269,6 +269,7 @@ export const loginUser = async (req, res) => {
     // Generar token JWT
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '7d' });
 
+
     // No devolver la contraseña
     const userResponse = user.toJSON();
     delete userResponse.password;

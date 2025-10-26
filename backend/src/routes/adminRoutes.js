@@ -6,9 +6,21 @@ import {
   updateUserRole,
   toggleUserStatus,
   updateAdminPermissions,
+
+  getUserStats,
+  getAttendanceReport
+} from '../controllers/adminController.js';
+import { protect, adminOnly, checkAdminPermission } from '../middleware/auth.js';
+import { 
+  exportAttendanceToCSV, 
+  exportStatsToCSV, 
+  exportToPDF 
+} from '../services/reportService.js';
+
   getUserStats
 } from '../controllers/adminController.js';
 import { protect, adminOnly, checkAdminPermission } from '../middleware/auth.js';
+
 
 const router = express.Router();
 
@@ -36,5 +48,30 @@ router.put('/users/:id/toggle-status', toggleUserStatus);
 
 // Actualizar permisos de administrador (solo super admin)
 router.put('/administrators/:id/permissions', updateAdminPermissions);
+
+
+// === REPORTES DE ASISTENCIA (HU6) ===
+
+// Obtener reporte de asistencia con filtros
+router.get('/reports/attendance', getAttendanceReport);
+
+// Exportar reporte de asistencia a CSV (tickets detallados)
+// Redirigir a la nueva ruta simplificada
+router.get('/reports/attendance/export/csv', async (req, res) => {
+  return res.redirect(307, '/api/reports/tickets/csv');
+});
+
+// Exportar estadísticas a CSV
+// Redirigir a la nueva ruta simplificada
+router.get('/reports/attendance/export/csv-stats', async (req, res) => {
+  return res.redirect(307, '/api/reports/tickets/csv');
+});
+
+// Exportar reporte a PDF
+// Redirigir a la nueva ruta simplificada
+router.get('/reports/attendance/export/pdf', async (req, res) => {
+  return res.redirect(307, '/api/reports/tickets/pdf');
+});
+
 
 export default router;

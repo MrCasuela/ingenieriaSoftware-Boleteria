@@ -348,6 +348,236 @@
         </div>
       </div>
 
+      <!-- Tab: Reportes (HU6) -->
+      <div v-if="activeTab === 'reports'" class="tab-content">
+        <div class="section-header">
+          <h2>📊 Reportes de Asistencia y Accesos</h2>
+        </div>
+
+        <!-- Filtros de Búsqueda -->
+        <div class="filters-section">
+          <h3>🔍 Filtros</h3>
+          <div class="filters-grid">
+            <div class="filter-group">
+              <label>Evento:</label>
+              <select v-model="reportFilters.eventId" class="form-control">
+                <option value="">Todos los eventos</option>
+                <option v-for="event in events" :key="event.id" :value="event.id">
+                  {{ event.name }}
+                </option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Estado:</label>
+              <select v-model="reportFilters.status" class="form-control">
+                <option value="">Todos los estados</option>
+                <option value="validated">Validados</option>
+                <option value="paid">Pagados</option>
+                <option value="pending">Pendientes</option>
+                <option value="cancelled">Cancelados</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Sector:</label>
+              <input 
+                type="text" 
+                v-model="reportFilters.sector" 
+                placeholder="Ej: VIP, General" 
+                class="form-control"
+              />
+            </div>
+
+            <div class="filter-group">
+              <label>Fecha Desde:</label>
+              <input 
+                type="date" 
+                v-model="reportFilters.startDate" 
+                class="form-control"
+              />
+            </div>
+
+            <div class="filter-group">
+              <label>Fecha Hasta:</label>
+              <input 
+                type="date" 
+                v-model="reportFilters.endDate" 
+                class="form-control"
+              />
+            </div>
+
+            <div class="filter-actions">
+              <button @click="loadReportData" class="btn-primary">
+                🔍 Buscar
+              </button>
+              <button @click="clearFilters" class="btn-secondary">
+                🔄 Limpiar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estadísticas en Tiempo Real -->
+        <div v-if="reportData" class="report-stats-section">
+          <h3>📈 Estadísticas en Tiempo Real</h3>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon">🎫</div>
+              <div class="stat-info">
+                <h4>Total Tickets</h4>
+                <p class="stat-number">{{ reportData.stats?.totalTickets || 0 }}</p>
+              </div>
+            </div>
+            <div class="stat-card success">
+              <div class="stat-icon">✅</div>
+              <div class="stat-info">
+                <h4>Validados</h4>
+                <p class="stat-number">{{ reportData.stats?.validated || 0 }}</p>
+              </div>
+            </div>
+            <div class="stat-card warning">
+              <div class="stat-icon">⏳</div>
+              <div class="stat-info">
+                <h4>Pendientes</h4>
+                <p class="stat-number">{{ reportData.stats?.pending || 0 }}</p>
+              </div>
+            </div>
+            <div class="stat-card danger">
+              <div class="stat-icon">❌</div>
+              <div class="stat-info">
+                <h4>Cancelados</h4>
+                <p class="stat-number">{{ reportData.stats?.cancelled || 0 }}</p>
+              </div>
+            </div>
+            <div class="stat-card info">
+              <div class="stat-icon">💰</div>
+              <div class="stat-info">
+                <h4>Ingresos Totales</h4>
+                <p class="stat-number">${{ formatPrice(reportData.stats?.totalRevenue || 0) }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Última actualización -->
+          <div class="update-info">
+            <span>🕐 Última actualización: {{ lastUpdateTime }}</span>
+            <button @click="loadReportData" class="btn-refresh">
+              🔄 Actualizar
+            </button>
+          </div>
+        </div>
+
+        <!-- Botones de Exportación -->
+        <div class="export-section">
+          <h3>📥 Exportar Reportes</h3>
+          <div class="export-buttons">
+            <button @click="exportCSV" class="btn-export btn-csv" :disabled="isExporting">
+              <span v-if="!isExporting">📄 Exportar CSV (Detallado)</span>
+              <span v-else>⏳ Exportando...</span>
+            </button>
+            <button @click="exportStatsCSV" class="btn-export btn-csv" :disabled="isExporting">
+              <span v-if="!isExporting">📊 Exportar CSV (Estadísticas)</span>
+              <span v-else>⏳ Exportando...</span>
+            </button>
+            <button @click="exportPDF" class="btn-export btn-pdf" :disabled="isExporting">
+              <span v-if="!isExporting">📕 Exportar PDF</span>
+              <span v-else>⏳ Exportando...</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Estadísticas por Evento -->
+        <div v-if="reportData && reportData.byEvent?.length > 0" class="report-section">
+          <h3>🎭 Check-ins por Evento</h3>
+          <div class="report-table-container">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Evento</th>
+                  <th>Fecha</th>
+                  <th>Lugar</th>
+                  <th>Total Check-ins</th>
+                  <th>Validados</th>
+                  <th>Ingresos</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="event in reportData.byEvent" :key="event.eventName">
+                  <td><strong>{{ event.eventName }}</strong></td>
+                  <td>{{ formatDate(event.eventDate) }}</td>
+                  <td>{{ event.venue || 'N/A' }}</td>
+                  <td>{{ event.totalCheckins }}</td>
+                  <td>
+                    <span class="badge-success">{{ event.validated }}</span>
+                  </td>
+                  <td>${{ formatPrice(event.revenue) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Estadísticas por Sector -->
+        <div v-if="reportData && reportData.bySector?.length > 0" class="report-section">
+          <h3>🎯 Check-ins por Sector</h3>
+          <div class="report-table-container">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Sector</th>
+                  <th>Total Check-ins</th>
+                  <th>Validados</th>
+                  <th>Ingresos</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="sector in reportData.bySector" :key="sector.sector">
+                  <td><strong>{{ sector.sector }}</strong></td>
+                  <td>{{ sector.totalCheckins }}</td>
+                  <td>
+                    <span class="badge-success">{{ sector.validated }}</span>
+                  </td>
+                  <td>${{ formatPrice(sector.revenue) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Estadísticas por Operador -->
+        <div v-if="reportData && reportData.byOperator?.length > 0" class="report-section">
+          <h3>👤 Validaciones por Operador</h3>
+          <div class="report-table-container">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Operador</th>
+                  <th>Total Validaciones</th>
+                  <th>Última Validación</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="operator in reportData.byOperator" :key="operator.operatorName">
+                  <td><strong>{{ operator.operatorName }}</strong></td>
+                  <td>{{ operator.totalValidations }}</td>
+                  <td>{{ formatDateTime(operator.lastValidation) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Mensaje cuando no hay datos -->
+        <div v-if="!reportData" class="empty-state">
+          <p>🔍 Selecciona los filtros y presiona "Buscar" para generar el reporte</p>
+        </div>
+
+        <div v-else-if="reportData && reportData.tickets?.length === 0" class="empty-state">
+          <p>📭 No se encontraron datos para los filtros seleccionados</p>
+        </div>
+      </div>
+
       <!-- Tab: Estadísticas -->
       <div v-if="activeTab === 'stats'" class="tab-content">
         <div class="section-header">
@@ -1584,6 +1814,187 @@ export default {
         'Administrador': 'role-admin'
       }
       return classes[role] || 'role-default'
+
+    }
+
+    const getRoleIcon = (role) => {
+      const icons = {
+        'Cliente': '👨‍💼',
+        'Operador': '🎫',
+        'Administrador': '🔐'
+      }
+      return icons[role] || '👤'
+    }
+
+    const closeUserForm = () => {
+      showUserForm.value = false
+      editingUser.value = null
+      userForm.value = {
+        role: 'Cliente',
+        email: '',
+        password: '',
+        firstName: '',
+        lastName: '',
+        phone: '',
+        document: '',
+        employeeId: '',
+        shift: 'mañana'
+      }
+    }
+
+    const saveUser = async () => {
+      try {
+        console.log('==================== INICIO SAVE USER ====================')
+        const token = localStorage.getItem('apiToken')
+        console.log('Token obtenido:', token ? 'Existe' : 'NO EXISTE')
+        console.log('Token length:', token?.length)
+        
+        if (!token) {
+          console.error('❌ No hay token de autenticación')
+          alert('❌ Error: No hay token de autenticación. Por favor, cierre sesión e inicie sesión nuevamente.')
+          return
+        }
+
+        let endpoint = ''
+        let userData = {
+          email: userForm.value.email,
+          password: userForm.value.password,
+          firstName: userForm.value.firstName,
+          lastName: userForm.value.lastName,
+          phone: userForm.value.phone
+        }
+
+        // Configurar endpoint y datos según el rol
+        if (userForm.value.role === 'Cliente') {
+          endpoint = '/api/admin/clients'
+          userData.document = userForm.value.document
+        } else if (userForm.value.role === 'Operador') {
+          endpoint = '/api/admin/operators'
+          userData.employeeId = userForm.value.employeeId || `OP-${Date.now()}`
+          userData.shift = userForm.value.shift
+        }
+
+        console.log('Endpoint:', endpoint)
+        console.log('User Data:', userData)
+        console.log('Enviando petición...')
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(userData)
+        })
+
+        console.log('Response status:', response.status)
+        console.log('Response ok:', response.ok)
+        
+        const data = await response.json()
+        console.log('Response data:', data)
+
+        if (response.ok && data.success) {
+          console.log('✅ Usuario creado exitosamente')
+          alert(`✅ ${userForm.value.role} creado exitosamente`)
+          closeUserForm()
+          await loadUsers()
+        } else {
+          console.error('❌ Error en respuesta:', data)
+          alert(`❌ Error: ${data.message || 'Error desconocido'}`)
+        }
+        console.log('==================== FIN SAVE USER ====================')
+      } catch (error) {
+        console.error('==================== ERROR EN SAVE USER ====================')
+        console.error('Error completo:', error)
+        console.error('Error name:', error.name)
+        console.error('Error message:', error.message)
+        console.error('Error stack:', error.stack)
+        alert(`❌ Error al crear usuario: ${error.message}`)
+      }
+    }
+
+    const changeUserRole = (user) => {
+      selectedUser.value = user
+      newRole.value = user.userType
+      showRoleChangeModal.value = true
+    }
+
+    const confirmRoleChange = async () => {
+      try {
+        const token = localStorage.getItem('apiToken')
+        if (!token) {
+          alert('No hay token de autenticación')
+          return
+        }
+
+        if (newRole.value === selectedUser.value.userType) {
+          alert('El usuario ya tiene ese rol')
+          return
+        }
+
+        const response = await fetch(`/api/admin/users/${selectedUser.value.id}/role`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ newRole: newRole.value })
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.success) {
+          alert(`✅ Rol cambiado exitosamente de ${selectedUser.value.userType} a ${newRole.value}`)
+          showRoleChangeModal.value = false
+          selectedUser.value = null
+          await loadUsers()
+        } else {
+          alert(`❌ Error: ${data.message}`)
+        }
+      } catch (error) {
+        console.error('Error al cambiar rol:', error)
+        alert('❌ Error al cambiar rol')
+      }
+    }
+
+    const toggleUserStatus = async (user) => {
+      try {
+        const token = localStorage.getItem('apiToken')
+        if (!token) {
+          alert('No hay token de autenticación')
+          return
+        }
+
+        const action = user.isActive ? 'desactivar' : 'activar'
+        if (!confirm(`¿Está seguro que desea ${action} a ${user.email}?`)) {
+          return
+        }
+
+        const response = await fetch(`/api/admin/users/${user.id}/toggle-status`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.success) {
+          alert(`✅ Usuario ${action}do exitosamente`)
+          await loadUsers()
+        } else {
+          alert(`❌ Error: ${data.message}`)
+        }
+      } catch (error) {
+        console.error('Error al cambiar estado:', error)
+        alert('❌ Error al cambiar estado del usuario')
+      }
+    }
+
+    const handleLogout = () => {
+      authStore.logout()
+      router.push('/operator/login')
     }
 
     const getRoleIcon = (role) => {

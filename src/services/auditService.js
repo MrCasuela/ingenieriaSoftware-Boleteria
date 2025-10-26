@@ -156,7 +156,16 @@ export class AuditService {
 
       const data = await response.json();
       console.log('📊 Historial obtenido desde BD:', data);
-      return data;
+      
+      // Adaptar respuesta del backend al formato esperado por el frontend
+      return {
+        logs: data.data || [],
+        pagination: {
+          page: data.page || 1,
+          totalPages: data.totalPages || 1,
+          total: data.total || 0
+        }
+      };
       
     } catch (error) {
       console.error('❌ Error al obtener historial:', error);
@@ -222,7 +231,38 @@ export class AuditService {
 
       const data = await response.json();
       console.log('📈 Estadísticas obtenidas desde BD:', data);
-      return data;
+      
+      // Transformar la respuesta al formato que espera el frontend
+      const stats = data.stats || {};
+      
+      // Convertir byResult array a propiedades individuales
+      const resultCounts = {};
+      (stats.byResult || []).forEach(item => {
+        resultCounts[item.result] = item.count;
+      });
+      
+      // Convertir byType array a objeto
+      const typeCounts = {};
+      (stats.byType || []).forEach(item => {
+        typeCounts[item.type] = item.count;
+      });
+      
+      // Convertir byCategory array a objeto
+      const categoryCounts = {};
+      (stats.byCategory || []).forEach(item => {
+        categoryCounts[item.category] = item.count;
+      });
+      
+      return {
+        total: stats.total || 0,
+        approved: resultCounts.approved || 0,
+        rejected: resultCounts.rejected || 0,
+        errors: resultCounts.error || 0,
+        frauds: stats.frauds || 0,
+        byType: typeCounts,
+        byCategory: categoryCounts,
+        topOperators: stats.topOperators || []
+      };
       
     } catch (error) {
       console.error('❌ Error al obtener estadísticas:', error);
@@ -271,6 +311,8 @@ export class AuditService {
         endDate: filters.endDate
       };
 
+      console.log('📄 Generando PDF con payload:', payload);
+
       const response = await fetch('/api/audit/generate-pdf', {
         method: 'POST',
         headers: {
@@ -279,12 +321,18 @@ export class AuditService {
         body: JSON.stringify(payload)
       });
 
+      console.log('📡 Respuesta del servidor:', response.status, response.statusText);
+
       if (!response.ok) {
-        throw new Error('Error al generar reporte PDF');
+        const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }));
+        console.error('❌ Error del servidor:', errorData);
+        throw new Error(errorData.message || 'Error al generar reporte PDF');
       }
 
       // Descargar el PDF
       const blob = await response.blob();
+      console.log('📦 Blob recibido, tamaño:', blob.size);
+      
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

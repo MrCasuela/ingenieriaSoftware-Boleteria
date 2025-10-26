@@ -352,6 +352,9 @@
       <div v-if="activeTab === 'stats'" class="tab-content">
         <div class="section-header">
           <h2>📈 Estadísticas y Reportes</h2>
+          <button @click="showPDFDownloadModal = true" class="btn-primary">
+            📄 Descargar Reporte PDF
+          </button>
         </div>
 
         <div class="stats-grid">
@@ -929,11 +932,72 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal: Descarga de Reporte PDF -->
+    <div v-if="showPDFDownloadModal" class="modal-overlay" @click.self="showPDFDownloadModal = false">
+      <div class="modal-content modal-small">
+        <div class="modal-header">
+          <h3>📄 Descargar Reporte PDF de Auditoría</h3>
+          <button @click="showPDFDownloadModal = false" class="btn-close">✖</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Seleccione un Evento *</label>
+            <select v-model.number="pdfEventId" required class="form-control">
+              <option value="">-- Seleccione un evento --</option>
+              <option v-for="event in events" :key="event.id" :value="event.id">
+                {{ event.name }} - {{ formatDate(event.date) }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fecha Inicio (Opcional)</label>
+              <input v-model="pdfStartDate" type="date" class="form-control" />
+            </div>
+            <div class="form-group">
+              <label>Fecha Fin (Opcional)</label>
+              <input v-model="pdfEndDate" type="date" class="form-control" />
+            </div>
+          </div>
+
+          <div v-if="pdfDownloading" class="loading-message">
+            <div class="spinner"></div>
+            <p>Generando reporte PDF... Por favor espera.</p>
+          </div>
+
+          <div v-if="pdfError" class="alert alert-danger">
+            ❌ {{ pdfError }}
+          </div>
+
+          <div v-if="pdfSuccess" class="alert alert-success">
+            ✅ {{ pdfSuccess }}
+          </div>
+        </div>
+        <div class="form-actions">
+          <button 
+            @click="showPDFDownloadModal = false" 
+            class="btn-secondary"
+            :disabled="pdfDownloading"
+          >
+            Cancelar
+          </button>
+          <button 
+            @click="downloadPDFReport" 
+            class="btn-primary"
+            :disabled="!pdfEventId || pdfDownloading"
+          >
+            📥 Descargar PDF
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import * as ticketTypeApi from '../services/ticketTypeApiService'
@@ -1004,6 +1068,15 @@ export default {
     })
     const loadingAudit = ref(false)
     const generatingPDF = ref(false)
+
+    // PDF Download State
+    const showPDFDownloadModal = ref(false)
+    const pdfEventId = ref('')
+    const pdfStartDate = ref('')
+    const pdfEndDate = ref('')
+    const pdfDownloading = ref(false)
+    const pdfError = ref('')
+    const pdfSuccess = ref('')
 
     // Tabs
     const tabs = [
@@ -1266,32 +1339,93 @@ export default {
       showEventForm.value = true
     }
 
-    const saveEvent = () => {
-      if (editingEvent.value) {
-        // Actualizar evento existente
-        const index = events.value.findIndex(e => e.id === editingEvent.value)
-        if (index !== -1) {
-          events.value[index] = { ...eventForm.value, id: editingEvent.value }
+    const saveEvent = async () => {
+      try {
+        // Validar campos requeridos
+        if (!eventForm.value.name || !eventForm.value.description || !eventForm.value.date || 
+            !eventForm.value.time || !eventForm.value.venue || !eventForm.value.category || 
+            !eventForm.value.totalCapacity) {
+          alert('⚠️ Por favor completa todos los campos requeridos');
+          return;
         }
-      } else {
-        // Crear nuevo evento
-        const newEvent = {
-          ...eventForm.value,
-          id: Date.now(),
-          minPrice: 0 // Se calculará según los tipos de ticket
+
+        // Combinar fecha y hora
+        const dateTimeString = `${eventForm.value.date}T${eventForm.value.time}:00`;
+        
+        const eventData = {
+          name: eventForm.value.name,
+          description: eventForm.value.description,
+          date: dateTimeString,
+          location: `${eventForm.value.venue}${eventForm.value.city ? ', ' + eventForm.value.city : ''}`,
+          image: eventForm.value.imageUrl || 'https://via.placeholder.com/400x200',
+          category: eventForm.value.category,
+          totalCapacity: parseInt(eventForm.value.totalCapacity) || 0,
+          status: 'published'
+        };
+
+        console.log('📤 Enviando evento al backend:', eventData);
+
+        if (editingEvent.value) {
+          // Actualizar evento existente
+          const response = await eventApi.updateEvent(editingEvent.value, eventData);
+          
+          if (response.success) {
+            const index = events.value.findIndex(e => e.id === editingEvent.value);
+            if (index !== -1) {
+              events.value[index] = {
+                id: response.data.id,
+                name: response.data.name,
+                description: response.data.description,
+                date: response.data.date,
+                venue: response.data.location,
+                imageUrl: response.data.image,
+                category: response.data.category,
+                totalCapacity: response.data.totalCapacity,
+                minPrice: 0
+              };
+            }
+            alert('✅ Evento actualizado exitosamente');
+          }
+        } else {
+          // Crear nuevo evento
+          const response = await eventApi.createEvent(eventData);
+          
+          console.log('📥 Respuesta del backend:', response);
+          
+          if (response.success) {
+            // Agregar el evento creado a la lista local
+            events.value.push({
+              id: response.data.id,
+              name: response.data.name,
+              description: response.data.description,
+              date: response.data.date,
+              venue: response.data.location,
+              imageUrl: response.data.image,
+              category: response.data.category,
+              totalCapacity: response.data.totalCapacity,
+              minPrice: 0
+            });
+            alert('✅ Evento creado exitosamente');
+          }
         }
-        events.value.push(newEvent)
+        
+        closeEventForm();
+      } catch (error) {
+        console.error('❌ Error al guardar evento:', error);
+        alert('❌ Error al guardar el evento: ' + (error.message || 'Error desconocido'));
       }
-      saveEvents()
-      closeEventForm()
     }
 
-    const deleteEvent = (eventId) => {
+    const deleteEvent = async (eventId) => {
       if (confirm('¿Estás seguro de eliminar este evento? También se eliminarán todos sus tipos de ticket.')) {
-        events.value = events.value.filter(e => e.id !== eventId)
-        ticketTypes.value = ticketTypes.value.filter(tt => tt.eventId !== eventId)
-        saveEvents()
-        saveTicketTypes()
+        try {
+          await eventApi.deleteEvent(eventId)
+          events.value = events.value.filter(e => e.id !== eventId)
+          ticketTypes.value = ticketTypes.value.filter(tt => tt.eventId !== eventId)
+        } catch (error) {
+          console.error('Error al eliminar evento:', error)
+          alert('Error al eliminar el evento: ' + (error.message || 'Error desconocido'))
+        }
       }
     }
 
@@ -1736,6 +1870,76 @@ export default {
     }
 
     /**
+     * Descarga reporte PDF desde modal de estadísticas
+     */
+    const downloadPDFReport = async () => {
+      if (!pdfEventId.value) {
+        pdfError.value = 'Por favor selecciona un evento'
+        return
+      }
+
+      pdfDownloading.value = true
+      pdfError.value = ''
+      pdfSuccess.value = ''
+
+      try {
+        const response = await fetch('http://localhost:3000/api/audit/generate-pdf', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            eventId: pdfEventId.value,
+            startDate: pdfStartDate.value || undefined,
+            endDate: pdfEndDate.value || undefined
+          })
+        })
+
+        if (response.ok) {
+          // Obtener el blob del PDF
+          const blob = await response.blob()
+          
+          // Crear URL del blob
+          const url = window.URL.createObjectURL(blob)
+          
+          // Obtener nombre del evento
+          const event = events.value.find(e => e.id === pdfEventId.value)
+          const eventName = event ? event.name.replace(/\s/g, '-') : 'evento'
+          
+          // Crear link temporal y hacer click para descargar
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `reporte-auditoria-${eventName}-${Date.now()}.pdf`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          
+          // Liberar memoria
+          window.URL.revokeObjectURL(url)
+          
+          pdfSuccess.value = '✅ PDF descargado exitosamente'
+          
+          // Cerrar modal después de 2 segundos
+          setTimeout(() => {
+            showPDFDownloadModal.value = false
+            pdfSuccess.value = ''
+            pdfEventId.value = ''
+            pdfStartDate.value = ''
+            pdfEndDate.value = ''
+          }, 2000)
+        } else {
+          const error = await response.json()
+          pdfError.value = error.message || 'Error al generar el PDF'
+        }
+      } catch (error) {
+        console.error('❌ Error al descargar PDF:', error)
+        pdfError.value = 'Error de conexión al generar el PDF'
+      } finally {
+        pdfDownloading.value = false
+      }
+    }
+
+    /**
      * Formatea fecha y hora
      */
     const formatDateTime = (timestamp) => {
@@ -1779,6 +1983,13 @@ export default {
       loadData()
       // Cargar datos de auditoría si el tab está activo
       if (activeTab.value === 'history') {
+        loadAuditData()
+      }
+    })
+
+    // Watcher para cargar datos de auditoría cuando se cambia a la pestaña de historial
+    watch(activeTab, (newTab) => {
+      if (newTab === 'history') {
         loadAuditData()
       }
     })
@@ -1853,7 +2064,16 @@ export default {
       generatePDFReport,
       formatDateTime,
       getValidationTypeLabel,
-      getValidationResultLabel
+      getValidationResultLabel,
+      // PDF Download
+      showPDFDownloadModal,
+      pdfEventId,
+      pdfStartDate,
+      pdfEndDate,
+      pdfDownloading,
+      pdfError,
+      pdfSuccess,
+      downloadPDFReport
     }
   }
 }
@@ -3115,5 +3335,64 @@ export default {
     flex-direction: column;
     gap: 10px;
   }
+}
+
+/* ==================== ESTILOS PARA PDF MODAL ==================== */
+
+.loading-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.alert-success {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+  font-weight: 600;
+}
+
+.alert-danger {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  font-weight: 600;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.modal-body {
+  padding: 1.5rem;
 }
 </style>

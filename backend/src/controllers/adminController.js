@@ -1,4 +1,3 @@
-import { Cliente, Operador, Administrador } from '../models/index.js';
 import User from '../models/User.js';
 
 /**
@@ -8,21 +7,28 @@ import User from '../models/User.js';
  */
 export const getAllUsersAdmin = async (req, res) => {
   try {
-    // Obtener todos los tipos de usuarios
-    const clientes = await Cliente.findAll();
-    const operadores = await Operador.findAll();
-    const administradores = await Administrador.findAll();
+    // Obtener todos los usuarios
+    const allUsers = await User.findAll({
+      attributes: { exclude: ['password'] },
+      order: [['created_at', 'DESC']]
+    });
+
+    // Separar por tipo
+    const clientes = allUsers.filter(u => u.userType === 'Cliente');
+    const operadores = allUsers.filter(u => u.userType === 'Operador');
+    const administradores = allUsers.filter(u => u.userType === 'Administrador');
 
     res.json({
       success: true,
       data: {
-        clientes: clientes.map(u => u.toPublicJSON()),
-        operadores: operadores.map(u => u.toPublicJSON()),
-        administradores: administradores.map(u => u.toPublicJSON()),
-        total: clientes.length + operadores.length + administradores.length
+        clientes,
+        operadores,
+        administradores,
+        total: allUsers.length
       }
     });
   } catch (error) {
+    console.error('Error al obtener usuarios:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener usuarios',

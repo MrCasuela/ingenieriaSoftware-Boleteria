@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { Cliente, Operador, Administrador } from '../models/index.js';
+import User from '../models/User.js';
 
 /**
  * Middleware para verificar token JWT
@@ -24,10 +24,10 @@ export const protect = async (req, res, next) => {
     // Verificar token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Buscar usuario en los tres modelos
-    let user = await Cliente.findByPk(decoded.id);
-    if (!user) user = await Operador.findByPk(decoded.id);
-    if (!user) user = await Administrador.findByPk(decoded.id);
+    // Buscar usuario
+    const user = await User.findByPk(decoded.id, {
+      attributes: { exclude: ['password'] }
+    });
 
     if (!user) {
       return res.status(401).json({
@@ -48,6 +48,7 @@ export const protect = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
+    console.error('Authentication error:', error);
     return res.status(401).json({
       success: false,
       message: 'No autorizado - Token inválido',

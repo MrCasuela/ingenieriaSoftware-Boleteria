@@ -48,22 +48,22 @@ Ticket.belongsTo(TicketType, {
   as: 'ticketType'
 });
 
-// Cliente - Ticket (1:N) - Comprador
-Cliente.hasMany(Ticket, {
+// User - Ticket (1:N) - Comprador
+User.hasMany(Ticket, {
   foreignKey: 'buyerId',
-  as: 'purchasedTickets'
+  as: 'tickets'
 });
-Ticket.belongsTo(Cliente, {
+Ticket.belongsTo(User, {
   foreignKey: 'buyerId',
-  as: 'buyer'
+  as: 'user'
 });
 
-// Operador - Ticket (1:N) - Validador
-Operador.hasMany(Ticket, {
+// User - Ticket (1:N) - Validador
+User.hasMany(Ticket, {
   foreignKey: 'validatedBy',
   as: 'validatedTickets'
 });
-Ticket.belongsTo(Operador, {
+Ticket.belongsTo(User, {
   foreignKey: 'validatedBy',
   as: 'validator'
 });

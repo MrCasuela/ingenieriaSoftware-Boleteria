@@ -276,8 +276,10 @@ export const loginUser = async (req, res) => {
     res.json({
       success: true,
       message: 'Login exitoso',
-      data: userResponse,
-      token
+      data: {
+        user: userResponse,
+        token
+      }
     });
   } catch (error) {
     console.error('❌ Error en login:', error);

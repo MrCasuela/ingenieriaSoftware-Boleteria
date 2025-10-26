@@ -13,6 +13,11 @@ Event.init(
       primaryKey: true,
       autoIncrement: true
     },
+    organizerId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'organizer_id'
+    },
     name: {
       type: DataTypes.STRING(200),
       allowNull: false,

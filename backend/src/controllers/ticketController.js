@@ -326,7 +326,7 @@ export const createTicket = async (req, res) => {
       include: [
         {
           model: User,
-          as: 'buyer',
+          as: 'user',
           attributes: ['id', 'email', 'firstName', 'lastName']
         },
         {

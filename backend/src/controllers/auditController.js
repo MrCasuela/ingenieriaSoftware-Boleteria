@@ -3,6 +3,7 @@ import Event from '../models/Event.js';
 import Ticket from '../models/Ticket.js';
 import { Op } from 'sequelize';
 import PDFDocument from 'pdfkit';
+import { generateAuditReportPDF } from '../services/pdfService.js';
 
 /**
  * Obtener todos los logs de auditoría con filtros
@@ -214,127 +215,97 @@ export const getEventReport = async (req, res) => {
  */
 export const generatePDFReport = async (req, res) => {
   try {
-    const { eventId, startDate, endDate } = req.body;
+    const { eventId, startDate, endDate, action } = req.body;
 
     let event = null;
-    let whereClause = {};
+    const where = {};
 
+    // Si se proporciona eventId, validar el evento
     if (eventId) {
       event = await Event.findByPk(eventId);
-      whereClause.event_id = eventId;
+      
+      if (!event) {
+        return res.status(404).json({
+          success: false,
+          message: 'Evento no encontrado'
+        });
+      }
+      
+      where.event_id = event.id;
     }
 
+    // Construir filtros para la consulta
     if (startDate || endDate) {
-      whereClause.timestamp = {};
-      if (startDate) whereClause.timestamp[Op.gte] = new Date(startDate);
-      if (endDate) whereClause.timestamp[Op.lte] = new Date(endDate);
+      where.timestamp = {};
+      if (startDate) where.timestamp[Op.gte] = new Date(startDate);
+      if (endDate) where.timestamp[Op.lte] = new Date(endDate);
     }
 
-    // Obtener datos
-    const logs = await AuditLog.findAll({
-      where: whereClause,
-      order: [['timestamp', 'DESC']]
+    // Obtener logs de auditoría
+    let auditLogs = await AuditLog.findAll({
+      where,
+      order: [['timestamp', 'DESC']],
+      limit: 5000
     });
 
-    const stats = await getEventStats(eventId, startDate, endDate);
+    // Si se solicitó filtrar por 'action', hacerlo en memoria
+    if (action) {
+      auditLogs = auditLogs.filter(l => {
+        const plain = (l.metadata && JSON.stringify(l.metadata)) || '';
+        const msg = (l.message || '').toString();
+        const actionField = (l.metadata && (l.metadata.action || l.metadata.type)) || null;
+        const candidates = [actionField, plain, msg].filter(Boolean).map(c => c.toString().toLowerCase());
+        return candidates.some(c => c.includes(action.toString().toLowerCase()));
+      });
+    }
 
-    // Crear PDF
-    const doc = new PDFDocument({ margin: 50 });
+    if (!auditLogs || auditLogs.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontraron registros de auditoría'
+      });
+    }
+
+    // Normalizar logs
+    const normalizedLogs = auditLogs.map(l => {
+      const json = l.toJSON ? l.toJSON() : l;
+      json.details = json.details || json.metadata || {};
+      return json;
+    });
+
+    // Si no hay evento específico, crear un objeto genérico
+    const reportEvent = event || {
+      name: 'Todos los Eventos',
+      date: new Date(),
+      location: 'Sistema General'
+    };
+
+    // Generar PDF usando el servicio
+    const doc = generateAuditReportPDF(reportEvent, normalizedLogs, { startDate, endDate, action });
 
     // Configurar headers para descarga
+    const filename = event 
+      ? `reporte-auditoria-${(event.name || 'evento').replace(/\s/g, '-')}-${Date.now()}.pdf`
+      : `reporte-auditoria-general-${Date.now()}.pdf`;
+    
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename=reporte-auditoria-${event ? event.name.replace(/\s/g, '-') : 'general'}-${Date.now()}.pdf`
-    );
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
+    // Pipe del PDF a la respuesta
     doc.pipe(res);
-
-    // Título
-    doc.fontSize(20).text('REPORTE DE AUDITORÍA Y VALIDACIONES', { align: 'center' });
-    doc.moveDown();
-
-    if (event) {
-      doc.fontSize(16).text(`Evento: ${event.name}`, { align: 'center' });
-      doc.fontSize(12).text(`Fecha: ${new Date(event.date).toLocaleDateString()}`, { align: 'center' });
-      doc.text(`Ubicación: ${event.location}`, { align: 'center' });
-      doc.moveDown();
-    }
-
-    doc.fontSize(12).text(`Generado: ${new Date().toLocaleString()}`, { align: 'center' });
-    doc.moveDown(2);
-
-    // Sección: Resumen Ejecutivo
-    doc.fontSize(14).fillColor('blue').text('📊 RESUMEN EJECUTIVO', { underline: true });
-    doc.fillColor('black').fontSize(11);
-    doc.moveDown();
-    
-    doc.text(`Total de validaciones: ${stats.total}`);
-    doc.text(`Aprobadas: ${stats.approved} (${((stats.approved/stats.total)*100).toFixed(1)}%)`);
-    doc.text(`Rechazadas: ${stats.rejected} (${((stats.rejected/stats.total)*100).toFixed(1)}%)`);
-    doc.text(`Errores: ${stats.errors}`);
-    doc.text(`Intentos de fraude detectados: ${stats.frauds}`);
-    doc.moveDown(2);
-
-    // Sección: Por Tipo de Validación
-    doc.fontSize(14).fillColor('blue').text('🔍 VALIDACIONES POR TIPO', { underline: true });
-    doc.fillColor('black').fontSize(11);
-    doc.moveDown();
-    
-    doc.text(`Escáner QR: ${stats.byType.qr || 0}`);
-    doc.text(`Manual (código): ${stats.byType.manual || 0}`);
-    doc.text(`Por RUT: ${stats.byType.rut || 0}`);
-    doc.moveDown(2);
-
-    // Sección: Por Categoría de Ticket
-    doc.fontSize(14).fillColor('blue').text('🎫 ENTRADAS POR CATEGORÍA', { underline: true });
-    doc.fillColor('black').fontSize(11);
-    doc.moveDown();
-    
-    Object.entries(stats.byCategory).forEach(([category, count]) => {
-      doc.text(`${category.toUpperCase()}: ${count} tickets`);
-    });
-    doc.moveDown(2);
-
-    // Sección: Timeline de Validaciones
-    doc.addPage();
-    doc.fontSize(14).fillColor('blue').text('📅 HISTORIAL DE VALIDACIONES', { underline: true });
-    doc.fillColor('black').fontSize(10);
-    doc.moveDown();
-
-    // Tabla de validaciones (últimas 50)
-    const recentLogs = logs.slice(0, 50);
-    
-    recentLogs.forEach((log, index) => {
-      const color = log.validation_result === 'approved' ? 'green' : 'red';
-      const icon = log.validation_result === 'approved' ? '✓' : '✗';
-      
-      doc.fillColor(color).text(
-        `${icon} ${new Date(log.timestamp).toLocaleString()} - ${log.ticket_code} - ${log.validation_type.toUpperCase()} - ${log.operator_name}`,
-        { width: 500 }
-      );
-      
-      if (index < recentLogs.length - 1) {
-        doc.fillColor('black').moveDown(0.3);
-      }
-
-      // Nueva página cada 30 logs
-      if ((index + 1) % 30 === 0 && index < recentLogs.length - 1) {
-        doc.addPage();
-        doc.fontSize(10).fillColor('black');
-      }
-    });
-
-    // Finalizar PDF
     doc.end();
 
   } catch (error) {
     console.error('❌ Error al generar PDF:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al generar reporte PDF',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    
+    // Si ya se enviaron headers, no podemos enviar JSON
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: 'Error al generar reporte PDF',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
   }
 };
 

@@ -109,7 +109,18 @@ Ticket.init(
       defaultValue: 'paid'
     },
     paymentMethod: {
-      type: DataTypes.ENUM('tarjeta_credito', 'tarjeta_debito', 'transferencia', 'efectivo', 'mercadopago', 'paypal'),
+      type: DataTypes.ENUM(
+        'tarjeta_credito', 
+        'tarjeta_debito', 
+        'transferencia', 
+        'efectivo', 
+        'mercadopago', 
+        'paypal',
+        'credit_card',
+        'debit_card',
+        'transfer',
+        'cash'
+      ),
       defaultValue: 'tarjeta_credito',
       field: 'payment_method'
     },

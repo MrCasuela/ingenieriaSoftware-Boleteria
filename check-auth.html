@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Verificar Autenticación</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .info { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        pre { background: #fff; padding: 10px; border: 1px solid #ddd; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Verificación de Autenticación</h1>
+    
+    <div id="results"></div>
+    
+    <script>
+        const resultsDiv = document.getElementById('results');
+        let html = '';
+        
+        // Verificar token
+        const token = localStorage.getItem('apiToken');
+        html += '<div class="info ' + (token ? 'success' : 'error') + '">';
+        html += '<h2>Token JWT:</h2>';
+        if (token) {
+            html += '<p>✅ Token encontrado</p>';
+            html += '<pre>' + token.substring(0, 50) + '...</pre>';
+        } else {
+            html += '<p>❌ No hay token guardado</p>';
+        }
+        html += '</div>';
+        
+        // Verificar sesión de admin
+        const adminSession = localStorage.getItem('adminSession');
+        html += '<div class="info ' + (adminSession ? 'success' : 'error') + '">';
+        html += '<h2>Sesión de Administrador:</h2>';
+        if (adminSession) {
+            html += '<p>✅ Sesión encontrada</p>';
+            html += '<pre>' + JSON.stringify(JSON.parse(adminSession), null, 2) + '</pre>';
+        } else {
+            html += '<p>❌ No hay sesión de administrador</p>';
+        }
+        html += '</div>';
+        
+        // Mostrar todo el localStorage
+        html += '<div class="info">';
+        html += '<h2>Todo el localStorage:</h2>';
+        html += '<pre>';
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            const value = localStorage.getItem(key);
+            html += key + ': ' + (value.length > 100 ? value.substring(0, 100) + '...' : value) + '\n';
+        }
+        html += '</pre>';
+        html += '</div>';
+        
+        resultsDiv.innerHTML = html;
+    </script>
+</body>
+</html>

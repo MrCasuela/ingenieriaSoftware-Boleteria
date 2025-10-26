@@ -16,6 +16,7 @@ import eventRoutes from './src/routes/eventRoutes.js';
 import ticketTypeRoutes from './src/routes/ticketTypeRoutes.js';
 import ticketRoutes from './src/routes/ticketRoutes.js';
 import auditRoutes from './src/routes/auditRoutes.js';
+import adminRoutes from './src/routes/adminRoutes.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -75,6 +76,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/ticket-types', ticketTypeRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Ruta para enviar entrada por email
 app.post('/api/send-ticket-email', upload.single('pdf'), async (req, res) => {

@@ -20,6 +20,14 @@ class User extends Model {
   get fullName() {
     return `${this.firstName} ${this.lastName}`;
   }
+
+  /**
+   * Comparar contraseña (texto plano)
+   */
+  async comparePassword(candidatePassword) {
+    // Comparación directa en texto plano
+    return this.password === candidatePassword;
+  }
 }
 
 User.init(

@@ -23,12 +23,7 @@ export const protect = async (req, res, next) => {
 
   try {
     // Verificar token
-
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key-12345');
-
-    // Buscar usuario en el modelo User unificado
-    const user = await User.findByPk
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Buscar usuario
     const user = await User.findByPk(decoded.id, {
@@ -41,7 +36,6 @@ export const protect = async (req, res, next) => {
         message: 'No autorizado - Usuario no encontrado'
       });
     }
-
 
     console.log('🔍 Usuario encontrado:', {
       id: user.id,
@@ -58,9 +52,6 @@ export const protect = async (req, res, next) => {
     
     if (isActive === 0 || isActive === false) {
       console.log('❌ Usuario no activo:', isActive);
-    // Verificar que el usuario esté activo
-    if (!user.isActive) {
-
       return res.status(403).json({
         success: false,
         message: 'Cuenta desactivada'

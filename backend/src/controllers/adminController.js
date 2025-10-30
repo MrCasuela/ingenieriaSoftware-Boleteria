@@ -4,6 +4,7 @@ import Event from '../models/Event.js';
 import TicketType from '../models/TicketType.js';
 import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
+import bcrypt from 'bcryptjs';
 
 
 /**
@@ -50,7 +51,15 @@ export const getAllUsersAdmin = async (req, res) => {
  */
 export const createOperator = async (req, res) => {
   try {
-    const { email, password, firstName, lastName, phone, employeeId, shift } = req.body;
+    const { email, password, firstName, lastName, phone } = req.body;
+
+    // Validaciones básicas
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, password, firstName y lastName son requeridos'
+      });
+    }
 
     // Verificar si el email ya existe
     const existingUser = await User.findOne({ where: { email } });
@@ -61,24 +70,32 @@ export const createOperator = async (req, res) => {
       });
     }
 
-    // Crear nuevo operador
-    const operador = await Operador.create({
+    // Hashear la contraseña
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Crear nuevo operador usando el modelo User
+    const operador = await User.create({
       email,
-      password,
+      password: hashedPassword,
       firstName,
       lastName,
-      phone,
-      employeeId: employeeId || `OP-${Date.now()}`,
-      shift: shift || 'mañana',
+      phone: phone || '',
+      userType: 'Operador',
       isActive: true
     });
+
+    // Remover password de la respuesta
+    const operadorData = operador.toJSON();
+    delete operadorData.password;
 
     res.status(201).json({
       success: true,
       message: 'Operador creado exitosamente',
-      data: operador.toPublicJSON()
+      data: operadorData
     });
   } catch (error) {
+    console.error('Error al crear operador:', error);
     res.status(500).json({
       success: false,
       message: 'Error al crear operador',
@@ -94,15 +111,15 @@ export const createOperator = async (req, res) => {
  */
 export const createAdministrator = async (req, res) => {
   try {
-    // Verificar que el usuario que crea es super admin
-    if (req.user.adminLevel !== 'super') {
-      return res.status(403).json({
+    const { email, password, firstName, lastName, phone } = req.body;
+
+    // Validaciones básicas
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({
         success: false,
-        message: 'Solo super administradores pueden crear otros administradores'
+        message: 'Email, password, firstName y lastName son requeridos'
       });
     }
-
-    const { email, password, firstName, lastName, phone, adminLevel, permissions } = req.body;
 
     // Verificar si el email ya existe
     const existingUser = await User.findOne({ where: { email } });
@@ -113,24 +130,32 @@ export const createAdministrator = async (req, res) => {
       });
     }
 
-    // Crear nuevo administrador
-    const administrador = await Administrador.create({
+    // Hashear la contraseña
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Crear nuevo administrador usando el modelo User
+    const administrador = await User.create({
       email,
-      password,
+      password: hashedPassword,
       firstName,
       lastName,
-      phone,
-      adminLevel: adminLevel || 'moderador',
-      permissions: permissions || ['manage_events', 'view_reports'],
+      phone: phone || '',
+      userType: 'Administrador',
       isActive: true
     });
+
+    // Remover password de la respuesta
+    const administradorData = administrador.toJSON();
+    delete administradorData.password;
 
     res.status(201).json({
       success: true,
       message: 'Administrador creado exitosamente',
-      data: administrador.toPublicJSON()
+      data: administradorData
     });
   } catch (error) {
+    console.error('Error al crear administrador:', error);
     res.status(500).json({
       success: false,
       message: 'Error al crear administrador',
@@ -147,12 +172,10 @@ export const createAdministrator = async (req, res) => {
 export const updateUserRole = async (req, res) => {
   try {
     const { id } = req.params;
-    const { newRole, ...userData } = req.body;
+    const { newRole, ...updateData } = req.body;
 
-    // Buscar usuario actual
-    let user = await Cliente.findByPk(id);
-    if (!user) user = await Operador.findByPk(id);
-    if (!user) user = await Administrador.findByPk(id);
+    // Buscar usuario actual usando el modelo User
+    const user = await User.findByPk(id);
 
     if (!user) {
       return res.status(404).json({
@@ -161,63 +184,23 @@ export const updateUserRole = async (req, res) => {
       });
     }
 
-    // Si el rol no cambia, solo actualizar datos
-    if (user.userType === newRole) {
-      await user.update(userData);
-      return res.json({
-        success: true,
-        message: 'Usuario actualizado',
-        data: user.toPublicJSON()
-      });
-    }
+    // Actualizar el rol y otros datos
+    await user.update({
+      ...updateData,
+      userType: newRole
+    });
 
-    // Cambiar de rol requiere eliminar y recrear en otra tabla
-    const userFullData = {
-      email: user.email,
-      password: user.password, // Ya está hasheada
-      firstName: userData.firstName || user.firstName,
-      lastName: userData.lastName || user.lastName,
-      phone: userData.phone || user.phone,
-      isActive: user.isActive
-    };
-
-    // Eliminar usuario actual
-    await user.destroy();
-
-    // Crear en el nuevo rol
-    let newUser;
-    if (newRole === 'Cliente') {
-      newUser = await Cliente.create({
-        ...userFullData,
-        document: userData.document || user.document || ''
-      });
-    } else if (newRole === 'Operador') {
-      newUser = await Operador.create({
-        ...userFullData,
-        employeeId: userData.employeeId || `OP-${Date.now()}`,
-        shift: userData.shift || 'mañana'
-      });
-    } else if (newRole === 'Administrador') {
-      // Solo super admin puede crear administradores
-      if (req.user.adminLevel !== 'super') {
-        return res.status(403).json({
-          success: false,
-          message: 'Solo super administradores pueden promover a administrador'
-        });
-      }
-      newUser = await Administrador.create({
-        ...userFullData,
-        adminLevel: userData.adminLevel || 'moderador',
-        permissions: userData.permissions || ['view_reports']
-      });
-    }
+    // Remover password de la respuesta
+    const userDataResponse = user.toJSON();
+    delete userDataResponse.password;
 
     res.json({
       success: true,
-      message: `Usuario cambiado de ${user.userType} a ${newRole}`,
-      data: newUser.toPublicJSON()
+      message: `Usuario actualizado a ${newRole}`,
+      data: userDataResponse
     });
   } catch (error) {
+    console.error('Error al actualizar rol:', error);
     res.status(500).json({
       success: false,
       message: 'Error al actualizar rol',
@@ -235,10 +218,8 @@ export const toggleUserStatus = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Buscar usuario
-    let user = await Cliente.findByPk(id);
-    if (!user) user = await Operador.findByPk(id);
-    if (!user) user = await Administrador.findByPk(id);
+    // Buscar usuario usando el modelo User
+    const user = await User.findByPk(id);
 
     if (!user) {
       return res.status(404).json({
@@ -325,9 +306,9 @@ export const updateAdminPermissions = async (req, res) => {
  */
 export const getUserStats = async (req, res) => {
   try {
-    const clientesCount = await Cliente.count();
-    const operadoresCount = await Operador.count();
-    const administradoresCount = await Administrador.count();
+    const clientesCount = await User.count({ where: { userType: 'Cliente' } });
+    const operadoresCount = await User.count({ where: { userType: 'Operador' } });
+    const administradoresCount = await User.count({ where: { userType: 'Administrador' } });
     const activeCount = await User.count({ where: { isActive: true } });
     const inactiveCount = await User.count({ where: { isActive: false } });
 
@@ -343,6 +324,7 @@ export const getUserStats = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Error al obtener estadísticas:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener estadísticas',

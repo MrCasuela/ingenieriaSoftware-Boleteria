@@ -65,16 +65,6 @@ User.hasMany(Ticket, {
 });
 Ticket.belongsTo(User, {
   foreignKey: 'validatedBy',
-  as: 'operatorValidator'
-});
-
-// User - Ticket (1:N) - Validador general (para reportes)
-User.hasMany(Ticket, {
-  foreignKey: 'validatedBy',
-  as: 'validatedTickets'
-});
-Ticket.belongsTo(User, {
-  foreignKey: 'validatedBy',
   as: 'validator'
 });
 

@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { Cliente, Operador, Administrador } from '../models/index.js';
+import { User, Cliente, Operador, Administrador } from '../models/index.js';
 import { Op } from 'sequelize';
 
 /**
@@ -70,8 +70,11 @@ export const registerCliente = async (req, res) => {
  * @access  Public
  */
 export const login = async (req, res) => {
+  console.log('🚀 INICIO DE LOGIN FUNCTION');
   try {
-    const { email, password, userType } = req.body;
+    const { email, password, userType: userTypeParam, user_type } = req.body;
+    const userType = userTypeParam || user_type; // Aceptar ambos formatos
+    console.log('📝 Datos recibidos - Email:', email, 'UserType:', userType);
 
     if (!email || !password) {
       return res.status(400).json({
@@ -80,12 +83,17 @@ export const login = async (req, res) => {
       });
     }
 
-    // Buscar usuario según tipo
-    let Model = Cliente;
-    if (userType === 'Operador') Model = Operador;
-    if (userType === 'Administrador') Model = Administrador;
+    // Buscar usuario según tipo en la tabla base users
+    const user = await User.findOne({ 
+      where: { 
+        email,
+        userType: userType || 'Cliente' // Por defecto Cliente si no se especifica
+      } 
+    });
 
-    const user = await Model.findOne({ where: { email } });
+    console.log('👤 Usuario encontrado:', user ? 'SÍ' : 'NO');
+    console.log('📧 Email:', user?.email);
+    console.log('🔧 Tiene comparePassword?:', typeof user?.comparePassword);
 
     if (!user) {
       return res.status(401).json({
@@ -95,7 +103,14 @@ export const login = async (req, res) => {
     }
 
     // Verificar password
+    console.log('🔍 Verificando contraseña...');
+    console.log('Password recibido:', password);
+    console.log('Password en BD:', user.password);
+    console.log('Tipo de comparePassword:', typeof user.comparePassword);
+    
     const isMatch = await user.comparePassword(password);
+    console.log('Resultado de comparación:', isMatch);
+    
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -113,7 +128,8 @@ export const login = async (req, res) => {
 
     // Actualizar último login si es administrador
     if (user.userType === 'Administrador') {
-      await user.updateLastLogin();
+      user.lastLogin = new Date();
+      await user.save();
     }
 
     // Generar token
@@ -129,6 +145,9 @@ export const login = async (req, res) => {
     });
 
   } catch (error) {
+    console.error('❌ ERROR EN LOGIN:', error);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Error en login',

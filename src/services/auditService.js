@@ -308,7 +308,10 @@ export class AuditService {
       const payload = {
         eventId,
         startDate: filters.startDate,
-        endDate: filters.endDate
+        endDate: filters.endDate,
+        validationType: filters.validationType,
+        validationResult: filters.validationResult,
+        operator: filters.operator
       };
 
       console.log('📄 Generando PDF con payload:', payload);
@@ -336,7 +339,7 @@ export class AuditService {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `reporte-auditoria-${eventId}-${Date.now()}.pdf`;
+      a.download = `reporte-auditoria-${eventId || 'todos'}-${Date.now()}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

@@ -215,7 +215,7 @@ export const getEventReport = async (req, res) => {
  */
 export const generatePDFReport = async (req, res) => {
   try {
-    const { eventId, startDate, endDate, action } = req.body;
+    const { eventId, startDate, endDate, validationType, validationResult, operator } = req.body;
 
     let event = null;
     const where = {};
@@ -241,6 +241,24 @@ export const generatePDFReport = async (req, res) => {
       if (endDate) where.timestamp[Op.lte] = new Date(endDate);
     }
 
+    // Filtrar por tipo de validación
+    if (validationType) {
+      where.validation_type = validationType;
+    }
+
+    // Filtrar por resultado de validación
+    if (validationResult) {
+      where.validation_result = validationResult;
+    }
+
+    // Filtrar por operador
+    if (operator) {
+      where[Op.or] = [
+        { operator_name: { [Op.like]: `%${operator}%` } },
+        { operator_email: { [Op.like]: `%${operator}%` } }
+      ];
+    }
+
     // Obtener logs de auditoría
     let auditLogs = await AuditLog.findAll({
       where,
@@ -248,21 +266,10 @@ export const generatePDFReport = async (req, res) => {
       limit: 5000
     });
 
-    // Si se solicitó filtrar por 'action', hacerlo en memoria
-    if (action) {
-      auditLogs = auditLogs.filter(l => {
-        const plain = (l.metadata && JSON.stringify(l.metadata)) || '';
-        const msg = (l.message || '').toString();
-        const actionField = (l.metadata && (l.metadata.action || l.metadata.type)) || null;
-        const candidates = [actionField, plain, msg].filter(Boolean).map(c => c.toString().toLowerCase());
-        return candidates.some(c => c.includes(action.toString().toLowerCase()));
-      });
-    }
-
     if (!auditLogs || auditLogs.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'No se encontraron registros de auditoría'
+        message: 'No se encontraron registros de auditoría con los filtros aplicados'
       });
     }
 
@@ -281,7 +288,13 @@ export const generatePDFReport = async (req, res) => {
     };
 
     // Generar PDF usando el servicio
-    const doc = generateAuditReportPDF(reportEvent, normalizedLogs, { startDate, endDate, action });
+    const doc = generateAuditReportPDF(reportEvent, normalizedLogs, { 
+      startDate, 
+      endDate, 
+      validationType,
+      validationResult,
+      operator 
+    });
 
     // Configurar headers para descarga
     const filename = event 

@@ -50,10 +50,6 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-ticketpass}
       JWT_SECRET: ${JWT_SECRET:-change_this_secret_in_production}
       JWT_EXPIRE: ${JWT_EXPIRE:-7d}
-      EMAIL_SERVICE: ${EMAIL_SERVICE:-gmail}
-      EMAIL_USER: ${EMAIL_USER}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
-      EMAIL_FROM: ${EMAIL_FROM:-noreply@ticketvue.com}
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     # volumes:

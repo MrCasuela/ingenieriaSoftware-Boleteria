@@ -63,7 +63,7 @@
             <div class="alert alert-info mt-4">
               <i class="fas fa-info-circle me-2"></i>
               <strong>Importante:</strong> Presenta este código QR en la entrada del evento. 
-              También hemos enviado una copia a tu email. Tu entrada puede ser validada usando el código 
+              Tu entrada puede ser validada usando el código 
               <code class="bg-white px-2 py-1">{{ ticketCode }}</code> o tu RUT 
               <code class="bg-white px-2 py-1">{{ personalData.document }}</code>.
             </div>
@@ -71,9 +71,6 @@
             <div class="mt-4">
               <button class="btn btn-primary me-3" @click="downloadTicket">
                 <i class="fas fa-download me-2"></i>Descargar Entrada
-              </button>
-              <button class="btn btn-success me-3" @click="sendTicketByEmail">
-                <i class="fas fa-envelope me-2"></i>Enviar por Email
               </button>
               <button class="btn btn-outline-danger" @click="startOver">
                 <i class="fas fa-home me-2"></i>Volver al Inicio
@@ -267,60 +264,6 @@ export default {
       }
     }
 
-    const sendTicketByEmail = async () => {
-      try {
-        const pdf = generatePDFBlob()
-        const pdfBlob = pdf.output('blob')
-        
-        // Crear FormData para enviar el archivo
-        const formData = new FormData()
-        formData.append('email', personalData.value.email)
-        formData.append('firstName', personalData.value.firstName)
-        formData.append('lastName', personalData.value.lastName)
-        formData.append('eventName', selectedEvent.value.name)
-        formData.append('ticketCode', ticketCode.value)
-        formData.append('pdf', pdfBlob, `Entrada-${ticketCode.value}.pdf`)
-        
-        // URL del backend - ajusta según tu configuración
-        const backendUrl = import.meta.env.VITE_API_URL || ''
-        
-        const response = await fetch(`${backendUrl}/api/send-ticket-email`, {
-          method: 'POST',
-          body: formData
-        })
-        
-        const result = await response.json()
-        
-        if (response.ok) {
-          alert(`✅ Entrada enviada exitosamente a ${personalData.value.email}`)
-          
-          // Si hay una URL de preview (para desarrollo), mostrarla en consola
-          if (result.previewUrl) {
-            console.log('Preview del email:', result.previewUrl)
-          }
-        } else {
-          throw new Error(result.message || 'Error al enviar el email')
-        }
-      } catch (error) {
-        console.error('Error al enviar el email:', error)
-        
-        // Fallback: usar mailto como alternativa
-        const subject = encodeURIComponent(`Tu Entrada - ${selectedEvent.value.name}`)
-        const body = encodeURIComponent(
-          `Hola ${personalData.value.firstName},\n\n` +
-          `Aquí está tu entrada para ${selectedEvent.value.name}.\n` +
-          `Código: ${ticketCode.value}\n\n` +
-          `Por favor, descarga el PDF desde la página web usando el botón "Descargar Entrada".\n\n` +
-          `Nota: Para recibir el PDF por email automáticamente, asegúrate de que el servidor backend esté configurado correctamente.`
-        )
-        
-        // Preguntar al usuario si desea abrir el cliente de email
-        if (confirm('No se pudo enviar el email automáticamente. ¿Deseas abrir tu cliente de email para enviarlo manualmente?')) {
-          window.location.href = `mailto:${personalData.value.email}?subject=${subject}&body=${body}`
-        }
-      }
-    }
-
     const startOver = () => {
       store.resetStore()
       router.push('/')
@@ -349,7 +292,6 @@ export default {
       getCardName,
       getCardIcon,
       downloadTicket,
-      sendTicketByEmail,
       startOver
     }
   }

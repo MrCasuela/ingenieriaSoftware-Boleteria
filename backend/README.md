@@ -27,18 +27,28 @@ backend/
 │   │   ├── Event.js
 │   │   ├── TicketType.js
 │   │   ├── Ticket.js
+│   │   ├── AuditLog.js      # ⭐ NUEVO: Auditoría
 │   │   └── index.js         # Relaciones
 │   ├── controllers/         # Lógica de negocio
 │   │   ├── authController.js
 │   │   ├── eventController.js
 │   │   ├── ticketController.js
 │   │   ├── ticketTypeController.js
-│   │   └── userController.js
+│   │   ├── userController.js
+│   │   └── auditController.js  # ⭐ NUEVO: Auditoría
 │   ├── routes/             # Rutas de API
 │   │   ├── eventRoutes.js
 │   │   ├── ticketRoutes.js
+│   │   ├── auditRoutes.js   # ⭐ NUEVO: Auditoría
 │   │   └── ...
+│   ├── services/           # Servicios
+│   │   └── pdfService.js   # Generación de PDFs
 │   └── utils/             # Utilidades
+├── migrations/            # ⭐ NUEVO: Migraciones SQL
+│   ├── create-audit-logs-table.sql
+│   └── insert-audit-sample-data.sql
+├── database-schema-init.sql  # Schema inicial con audit_logs
+├── database-schema.sql       # Schema completo
 └── server.js             # Punto de entrada
 ```
 
@@ -137,23 +147,42 @@ venues (1:N) events
 
 #### events
 - id, name, description, date
-- venue_id (FK), organizer_id (FK)
-- total_capacity, available_capacity
-- category, status, image
+- location, venue (JSON), image
+- total_capacity, total_sold, revenue
+- category, status, created_at, updated_at
 
 #### ticket_types
 - id, event_id (FK), name, description
-- price, total_capacity, available_capacity
+- price, quantity, available
+- features (JSON), is_active
 
 #### tickets
-- id, user_id (FK), ticket_type_id (FK)
-- ticket_code (único), status
-- purchase_date, is_used, used_at
-- validated_by (FK a users)
+- id, ticket_code (único), event_id (FK)
+- ticket_type_id (FK), buyer_id (FK)
+- quantity, price, service_charge, total_amount
+- status (pending/paid/validated/cancelled/refunded)
+- payment_method, payment_reference, qr_code
+- buyer_name, buyer_email, buyer_document, buyer_phone
+- validated_by (FK a users), validated_at
+- purchase_date, created_at, updated_at
 
-#### venues
-- id, name, address, city
-- country, capacity
+#### audit_logs ⭐ NUEVA
+- id, ticket_code, operator_name, operator_email
+- event_id (FK), event_name
+- validation_result (approved/rejected/error)
+- validation_type (qr/manual/rut)
+- ticket_category (normal/vip/general/premium)
+- message, rejection_reason, fraud_detected
+- user_name, user_rut
+- metadata (JSON), ip_address, user_agent
+- timestamp, created_at, updated_at
+
+**Propósito:** Registra TODAS las validaciones de tickets (exitosas y fallidas) para:
+- Auditoría y trazabilidad
+- Detección de fraudes (múltiples intentos de uso)
+- Análisis de rendimiento de operadores
+- Reportes y estadísticas
+- Cumplimiento legal
 
 ## 🔌 API Endpoints
 
@@ -204,6 +233,38 @@ venues (1:N) events
 | GET | /api/users/:id | Obtener usuario |
 | PUT | /api/users/:id | Actualizar usuario |
 | DELETE | /api/users/:id | Eliminar usuario |
+
+### Auditoría ⭐ NUEVO
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | /api/audit/logs | Obtener logs con filtros |
+| GET | /api/audit/stats | Obtener estadísticas |
+| GET | /api/audit/report/:eventId | Reporte de evento |
+| POST | /api/audit/log | Crear registro de auditoría |
+| POST | /api/audit/generate-pdf | Generar reporte PDF |
+
+**Parámetros de filtro para `/api/audit/logs`:**
+- `eventId` - Filtrar por evento
+- `validationType` - qr, manual, o rut
+- `validationResult` - approved, rejected, o error
+- `operatorEmail` - Email del operador
+- `startDate` - Fecha inicio (YYYY-MM-DD)
+- `endDate` - Fecha fin (YYYY-MM-DD)
+- `limit` - Límite de registros (default: 100)
+- `offset` - Offset para paginación (default: 0)
+
+**Ejemplo:**
+```bash
+GET /api/audit/logs?eventId=1&validationType=qr&limit=50
+GET /api/audit/stats?eventId=1&startDate=2025-01-01&endDate=2025-12-31
+POST /api/audit/generate-pdf
+{
+  "eventId": 1,
+  "startDate": "2025-01-01",
+  "endDate": "2025-12-31"
+}
+```
 
 ## 💾 Transacciones
 

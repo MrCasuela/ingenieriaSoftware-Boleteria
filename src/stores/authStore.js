@@ -10,7 +10,9 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isOperator: (state) => state.isAuthenticated && state.userType === 'operador',
     isAdministrator: (state) => state.isAuthenticated && state.userType === 'administrador',
-    userName: (state) => state.user?.name || ''
+    userName: (state) => state.user?.name || '',
+    // Getter para obtener el token JWT desde localStorage
+    token: () => localStorage.getItem('apiToken')
   },
 
   actions: {
@@ -232,15 +234,15 @@ export const useAuthStore = defineStore('auth', {
             console.log('✅ Guardando token en localStorage:', token.substring(0, 20) + '...')
             localStorage.setItem('apiToken', token)
           } else {
-            console.warn('⚠️ No se recibió token en la respuesta del login')
-            console.warn('⚠️ Estructura de data:', JSON.stringify(data, null, 2))
-
+            console.error('❌ ERROR CRÍTICO: No se recibió token en la respuesta del login')
+            console.error('❌ Estructura de data:', JSON.stringify(data, null, 2))
             
-            // SOLUCIÓN: Generar un token temporal si el backend no lo devuelve
-            const tempToken = 'temp-token-' + Date.now() + '-' + Math.random().toString(36).substring(7)
-            console.warn('⚠️ Generando token temporal:', tempToken.substring(0, 30) + '...')
-            localStorage.setItem('apiToken', tempToken)
-
+            // NO generar token temporal - el backend DEBE devolver uno válido
+            return {
+              success: false,
+              message: 'Error de autenticación: No se recibió token del servidor',
+              userType: null
+            }
           }
 
           return {

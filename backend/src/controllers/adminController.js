@@ -580,3 +580,124 @@ export const createClient = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Generar reporte PDF de estadísticas
+ * @route   POST /api/admin/generate-statistics-pdf
+ * @access  Private/Admin
+ */
+export const generateStatisticsPDF = async (req, res) => {
+  try {
+    const { generateStatisticsPDF: generatePDF } = await import('../services/pdfService.js');
+
+    // Obtener todos los eventos con sus tipos de tickets Y tickets vendidos
+    const events = await Event.findAll({
+      include: [
+        {
+          model: TicketType,
+          as: 'ticketTypes',
+          attributes: ['id', 'name', 'price', 'quantity', 'available']
+        },
+        {
+          model: Ticket,
+          as: 'tickets',
+          attributes: ['id', 'price', 'quantity', 'total_amount'],
+          where: { status: 'paid' },
+          required: false // LEFT JOIN para incluir eventos sin tickets vendidos
+        }
+      ],
+      order: [['date', 'ASC']]
+    });
+
+    // Calcular estadísticas generales
+    let totalEvents = events.length;
+    let totalTicketTypes = 0;
+    let totalCapacity = 0;
+    let totalPotentialRevenue = 0; // Ingresos si se vendieran TODOS los tickets
+    let totalSold = 0;
+    let availableTickets = 0;
+    let totalOccupancy = 0;
+
+    const eventsData = events.map(event => {
+      const eventJSON = event.toJSON();
+      const ticketTypes = eventJSON.ticketTypes || [];
+      const tickets = eventJSON.tickets || [];
+      
+      totalTicketTypes += ticketTypes.length;
+      
+      // Usar los campos ya calculados en la tabla events
+      const eventCapacity = eventJSON.totalCapacity || eventJSON.total_capacity || 0;
+      const eventSold = eventJSON.totalSold || eventJSON.total_sold || 0;
+      
+      // Calcular ingresos REALES sumando el total_amount de todos los tickets vendidos
+      const eventRealRevenue = tickets.reduce((sum, ticket) => {
+        return sum + parseFloat(ticket.total_amount || 0);
+      }, 0);
+      
+      totalCapacity += eventCapacity;
+      totalSold += eventSold;
+
+      // Calcular ingresos POTENCIALES (si se vendieran todos los tickets)
+      const eventPotentialRevenue = ticketTypes.reduce((sum, tt) => {
+        return sum + ((tt.quantity || 0) * (tt.price || 0));
+      }, 0);
+      totalPotentialRevenue += eventPotentialRevenue;
+
+      // Calcular tickets disponibles sumando el campo available de cada tipo
+      const eventAvailable = ticketTypes.reduce((sum, tt) => {
+        return sum + (tt.available || 0);
+      }, 0);
+      availableTickets += eventAvailable;
+
+      // Calcular ocupación del evento
+      const eventOccupancy = eventCapacity > 0 ? (eventSold / eventCapacity) * 100 : 0;
+      totalOccupancy += eventOccupancy;
+
+      return {
+        name: eventJSON.name,
+        date: eventJSON.date ? new Date(eventJSON.date).toLocaleDateString('es-CL') : 'Sin fecha',
+        venue: eventJSON.location || 'Sin ubicacion',
+        ticketTypes: ticketTypes.length,
+        capacity: eventCapacity,
+        sold: eventSold,
+        revenue: eventRealRevenue, // Ingresos REALES calculados desde tickets
+        occupancy: eventOccupancy.toFixed(1)
+      };
+    });
+
+    const averageOccupancy = totalEvents > 0 ? totalOccupancy / totalEvents : 0;
+
+    const stats = {
+      totalEvents,
+      totalTicketTypes,
+      totalCapacity,
+      totalSold,
+      totalRevenue: totalPotentialRevenue, // Ingresos potenciales
+      availableTickets,
+      averageOccupancy,
+      events: eventsData
+    };
+
+    // Generar PDF
+    const doc = generatePDF(stats);
+
+    // Configurar headers
+    const filename = `reporte-estadisticas-${Date.now()}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Pipe del PDF a la respuesta
+    doc.pipe(res);
+    doc.end();
+
+  } catch (error) {
+    console.error('❌ Error al generar PDF de estadísticas:', error);
+    
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: 'Error al generar reporte de estadísticas',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+};

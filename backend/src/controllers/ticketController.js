@@ -128,33 +128,25 @@ export const getTicketByCode = async (req, res) => {
 };
 
 /**
- * Obtener tickets por RUT del usuario
+ * Obtener tickets por RUT del comprador (buyer_document)
  */
 export const getTicketsByRut = async (req, res) => {
   try {
     const { rut } = req.params;
-    // Buscar usuario por RUT
-    const user = await User.findOne({
-      where: { rut: rut }
-    });
     
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'No se encontró usuario con este RUT',
-        tickets: []
-      });
-    }
+    console.log(`🔍 Buscando tickets por RUT: ${rut}`);
     
-    
-    // Buscar tickets del usuario
+    // Buscar tickets directamente por buyer_document (RUT del comprador)
     const tickets = await Ticket.findAll({
-      where: { user_id: user.id },
+      where: { 
+        buyer_document: rut
+      },
       include: [
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'email', 'first_name', 'last_name', 'rut']
+          attributes: ['id', 'email', 'firstName', 'lastName'],
+          required: false // LEFT JOIN para permitir tickets sin usuario asociado
         },
         {
           model: TicketType,
@@ -166,35 +158,48 @@ export const getTicketsByRut = async (req, res) => {
           }]
         }
       ],
-      order: [['purchase_date', 'DESC']]
+      order: [['purchaseDate', 'DESC']]
     });
     
-    console.log(`📋 Tickets encontrados: ${tickets.length}`);
+    console.log(`📋 Tickets encontrados para RUT ${rut}: ${tickets.length}`);
+    
+    if (!tickets || tickets.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No se encontraron tickets para el RUT ${rut}`,
+        tickets: []
+      });
+    }
+    
+    // Obtener información del comprador del primer ticket
+    const firstTicket = tickets[0];
+    const buyerName = firstTicket.buyerName || 
+                     (firstTicket.user ? `${firstTicket.user.firstName} ${firstTicket.user.lastName}` : 'No disponible');
+    const buyerEmail = firstTicket.buyerEmail || firstTicket.user?.email || 'No disponible';
     
     // Formatear tickets para el frontend (compatible con ticketStore)
     const formattedTickets = tickets.map(ticket => ({
       id: ticket.id,
-      codigo: ticket.ticket_code,
-      nombre: `${user.first_name} ${user.last_name}`,
-      rut: user.rut,
-      email: user.email,
+      codigo: ticket.ticketCode,
+      nombre: ticket.buyerName || buyerName,
+      rut: ticket.buyerDocument,
+      email: ticket.buyerEmail || buyerEmail,
       evento: ticket.ticketType?.event?.name || 'Evento desconocido',
       tipo: ticket.ticketType?.name || 'Tipo desconocido',
-      precio: ticket.ticketType?.price || 0,
-      usado: ticket.is_used,
-      fechaUso: ticket.used_at,
-      fechaCompra: ticket.purchase_date,
-      validadoPor: ticket.validated_by
+      precio: ticket.price || ticket.ticketType?.price || 0,
+      usado: ticket.status === 'validated',
+      fechaUso: ticket.validatedAt,
+      fechaCompra: ticket.purchaseDate,
+      validadoPor: ticket.validatedBy
     }));
     
     res.json({
       success: true,
       tickets: formattedTickets,
-      user: {
-        id: user.id,
-        nombre: `${user.first_name} ${user.last_name}`,
-        rut: user.rut,
-        email: user.email
+      buyer: {
+        nombre: buyerName,
+        rut: rut,
+        email: buyerEmail
       }
     });
   } catch (error) {

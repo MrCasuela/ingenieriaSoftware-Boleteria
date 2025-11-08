@@ -49,7 +49,7 @@ export const generateTicketPDF = async (ticketData) => {
       doc.fontSize(12)
          .fillColor('#FFFFFF')
          .font('Helvetica')
-         .text('Sistema de Boletería TicketVue', 50, 70, { align: 'center' });
+         .text('Sistema de Boleteria TicketVue', 50, 70, { align: 'center' });
 
       // Resetear color y posición
       doc.fillColor(textColor);
@@ -66,7 +66,7 @@ export const generateTicketPDF = async (ticketData) => {
       // Código de entrada debajo del QR
       doc.fontSize(10)
          .font('Helvetica-Bold')
-         .text('Código de Entrada:', 50, yPosition + 160);
+         .text('Codigo de Entrada:', 50, yPosition + 160);
       
       doc.fontSize(12)
          .font('Helvetica')
@@ -98,7 +98,7 @@ export const generateTicketPDF = async (ticketData) => {
       rightY += 20;
 
       // Ubicación
-      doc.font('Helvetica-Bold').text('Ubicación:', rightColumn, rightY);
+      doc.font('Helvetica-Bold').text('Ubicacion:', rightColumn, rightY);
       doc.font('Helvetica').text(ticketData.eventLocation, rightColumn + 80, rightY, { width: 250 });
       rightY += 20;
 
@@ -143,7 +143,7 @@ export const generateTicketPDF = async (ticketData) => {
 
       // Teléfono
       if (ticketData.buyerPhone) {
-        doc.font('Helvetica-Bold').text('Teléfono:', rightColumn, rightY);
+        doc.font('Helvetica-Bold').text('Telefono:', rightColumn, rightY);
         doc.font('Helvetica').text(ticketData.buyerPhone, rightColumn + 80, rightY);
         rightY += 20;
       }
@@ -165,8 +165,8 @@ export const generateTicketPDF = async (ticketData) => {
 
       doc.fontSize(9)
          .font('Helvetica')
-         .text('• Presenta este código QR en la entrada del evento', 60, yPosition + 25)
-         .text('• También puedes usar tu código de entrada o documento para validar tu acceso', 60, yPosition + 40)
+         .text('• Presenta este codigo QR en la entrada del evento', 60, yPosition + 25)
+         .text('• Tambien puedes usar tu codigo de entrada o documento para validar tu acceso', 60, yPosition + 40)
          .text('• Llega con tiempo suficiente antes del evento', 60, yPosition + 55);
 
       // Footer
@@ -174,7 +174,7 @@ export const generateTicketPDF = async (ticketData) => {
       doc.fontSize(8)
          .fillColor('#666666')
          .font('Helvetica')
-         .text('Este es tu ticket digital. Guárdalo en un lugar seguro.', 50, footerY, { 
+         .text('Este es tu ticket digital. Guardalo en un lugar seguro.', 50, footerY, { 
            align: 'center',
            width: doc.page.width - 100
          });
@@ -186,7 +186,7 @@ export const generateTicketPDF = async (ticketData) => {
          });
 
       doc.fontSize(8)
-         .text('© 2025 Sistema de Boletería TicketVue', 50, footerY + 25, { 
+         .text('(c) 2025 Sistema de Boleteria TicketVue', 50, footerY + 25, { 
            align: 'center',
            width: doc.page.width - 100
          });
@@ -213,7 +213,7 @@ export const generateAuditReportPDF = (event, auditLogs, filters = {}) => {
   });
 
   // Configurar metadata
-  doc.info.Title = `Reporte de Auditoría - ${event.name}`;
+  doc.info.Title = `Reporte de Auditoria - ${event.name}`;
   doc.info.Author = 'TicketVue System';
   doc.info.Subject = 'Reporte de Validaciones y Accesos';
   doc.info.CreationDate = new Date();
@@ -224,7 +224,7 @@ export const generateAuditReportPDF = (event, auditLogs, filters = {}) => {
   // --- ENCABEZADO ---
   doc.fontSize(20)
      .fillColor('#4F46E5')
-     .text('REPORTE DE AUDITORÍA', { align: 'center' });
+     .text('REPORTE DE AUDITORIA', { align: 'center' });
   
   doc.moveDown(0.5);
   
@@ -249,21 +249,21 @@ export const generateAuditReportPDF = (event, auditLogs, filters = {}) => {
   doc.moveDown(2);
   doc.fontSize(12)
      .fillColor('#000')
-     .text('Información del Reporte', { underline: true });
+     .text('Informacion del Reporte', { underline: true });
   
   doc.moveDown(0.5);
   doc.fontSize(10)
      .fillColor('#333');
   
-  doc.text(`Fecha de generación: ${new Date().toLocaleString('es-ES')}`);
+  doc.text(`Fecha de generacion: ${new Date().toLocaleString('es-ES')}`);
   doc.text(`Total de registros: ${auditLogs.length}`);
   
   if (filters.startDate && filters.endDate) {
-    doc.text(`Período: ${new Date(filters.startDate).toLocaleDateString('es-ES')} - ${new Date(filters.endDate).toLocaleDateString('es-ES')}`);
+    doc.text(`Periodo: ${new Date(filters.startDate).toLocaleDateString('es-ES')} - ${new Date(filters.endDate).toLocaleDateString('es-ES')}`);
   }
   
   if (filters.action) {
-    doc.text(`Tipo de acción: ${filters.action}`);
+    doc.text(`Tipo de accion: ${filters.action}`);
   }
 
   // --- ESTADÍSTICAS ---
@@ -276,7 +276,7 @@ export const generateAuditReportPDF = (event, auditLogs, filters = {}) => {
 
   const startY = doc.y;
   const boxWidth = 495;
-  const boxHeight = 120;
+  const boxHeight = 100;
   
   doc.rect(50, startY, boxWidth, boxHeight)
      .fillAndStroke('#F3F4F6', '#E5E7EB');
@@ -287,58 +287,48 @@ export const generateAuditReportPDF = (event, auditLogs, filters = {}) => {
   let currentY = startY + 15;
   doc.fontSize(11)
      .font('Helvetica-Bold')
-     .text('VALIDACIONES', 70, currentY);
+     .text('VALIDACIONES', 100, currentY);
   
   currentY += 20;
   doc.fontSize(10)
      .font('Helvetica');
   
   doc.fillColor('#10B981')
-     .text(`✓ Aprobadas: ${stats.validations.approved}`, 70, currentY);
+     .text(`[OK] Aprobadas: ${stats.validations.approved}`, 100, currentY);
   
   currentY += 15;
   doc.fillColor('#EF4444')
-     .text(`✗ Rechazadas: ${stats.validations.rejected}`, 70, currentY);
+     .text(`[X] Rechazadas: ${stats.validations.rejected}`, 100, currentY);
+  
+  currentY += 15;
+  doc.fillColor('#F59E0B')
+     .text(`[!] Errores: ${stats.validations.errors}`, 100, currentY);
   
   currentY += 15;
   doc.fillColor('#333')
-     .text(`Total: ${stats.validations.total}`, 70, currentY);
+     .text(`Total: ${stats.validations.total}`, 100, currentY);
 
-  // Columna 2: Tipo de Registro
+  // Columna 2: Tipo de Validación
   currentY = startY + 15;
   doc.fontSize(11)
      .fillColor('#000')
      .font('Helvetica-Bold')
-     .text('TIPO DE REGISTRO', 280, currentY);
+     .text('TIPO DE VALIDACION', 340, currentY);
   
   currentY += 20;
   doc.fontSize(10)
      .font('Helvetica');
   
-  doc.fillColor('#3B82F6')
-     .text(`QR Scanner: ${stats.registrationTypes.qr_scan}`, 280, currentY);
+  doc.fillColor('#6366F1')
+     .text(`[QR] Escaneo QR: ${stats.registrationTypes.qr_scan}`, 340, currentY);
   
   currentY += 15;
   doc.fillColor('#8B5CF6')
-     .text(`Manual: ${stats.registrationTypes.manual}`, 280, currentY);
-
-  // Columna 3: Categorías
-  currentY = startY + 15;
-  doc.fontSize(11)
-     .fillColor('#000')
-     .font('Helvetica-Bold')
-     .text('CATEGORÍAS', 420, currentY);
-  
-  currentY += 20;
-  doc.fontSize(10)
-     .font('Helvetica');
-  
-  doc.fillColor('#F59E0B')
-     .text(`Normal: ${stats.ticketCategories.normal}`, 420, currentY);
+     .text(`[MANUAL] Ingreso Manual: ${stats.registrationTypes.manual}`, 340, currentY);
   
   currentY += 15;
   doc.fillColor('#EC4899')
-     .text(`VIP: ${stats.ticketCategories.vip}`, 420, currentY);
+     .text(`[RUT] Por RUT: ${stats.registrationTypes.rut}`, 340, currentY);
 
   // --- DETALLE DE REGISTROS ---
   doc.addPage();
@@ -361,11 +351,10 @@ export const generateAuditReportPDF = (event, auditLogs, filters = {}) => {
 
   doc.fillColor('#fff');
   doc.text('FECHA', 55, tableTop + 6);
-  doc.text('HORA', 145, tableTop + 6);
-  doc.text('ACCIÓN', 200, tableTop + 6);
-  doc.text('RESULTADO', 305, tableTop + 6);
-  doc.text('MÉTODO', 380, tableTop + 6);
-  doc.text('CATEGORÍA', 455, tableTop + 6);
+  doc.text('HORA', 130, tableTop + 6);
+  doc.text('CÓDIGO', 200, tableTop + 6);
+  doc.text('RESULTADO', 315, tableTop + 6);
+  doc.text('TIPO', 435, tableTop + 6);
 
   // Filas de datos
   currentY = tableTop + 25;
@@ -383,23 +372,26 @@ export const generateAuditReportPDF = (event, auditLogs, filters = {}) => {
        .fill(bgColor);
 
     let resultColor = '#333';
-    if (log.action === 'TICKET_VALIDATED') {
-      resultColor = log.details?.success ? '#10B981' : '#EF4444';
+    if (log.validation_result === 'approved') {
+      resultColor = '#10B981';
+    } else if (log.validation_result === 'rejected') {
+      resultColor = '#EF4444';
+    } else if (log.validation_result === 'error') {
+      resultColor = '#F59E0B';
     }
 
     doc.fillColor('#333');
     
-    const logDate = new Date(log.createdAt);
+    const logDate = new Date(log.timestamp || log.created_at);
     doc.text(logDate.toLocaleDateString('es-ES'), 55, currentY + 4);
-    doc.text(logDate.toLocaleTimeString('es-ES'), 145, currentY + 4);
-    doc.text(getAuditActionText(log.action), 200, currentY + 4);
+    doc.text(logDate.toLocaleTimeString('es-ES'), 130, currentY + 4);
+    doc.text((log.ticket_code || 'N/A').substring(0, 15), 200, currentY + 4);
     
     doc.fillColor(resultColor);
-    doc.text(getAuditResultText(log), 305, currentY + 4);
+    doc.text(getValidationResultText(log.validation_result), 315, currentY + 4);
     
     doc.fillColor('#333');
-    doc.text(log.details?.method || 'N/A', 380, currentY + 4);
-    doc.text(log.details?.ticketType || 'N/A', 455, currentY + 4);
+    doc.text(getValidationTypeText(log.validation_type), 435, currentY + 4);
 
     currentY += 18;
   });
@@ -411,7 +403,7 @@ export const generateAuditReportPDF = (event, auditLogs, filters = {}) => {
   doc.fontSize(8)
      .fillColor('#999')
      .text(
-       `Generado por TicketVue © ${new Date().getFullYear()}`,
+       `Generado por TicketVue (c) ${new Date().getFullYear()}`,
        50,
        750,
        { align: 'center', width: 495 }
@@ -426,43 +418,51 @@ export const generateAuditReportPDF = (event, auditLogs, filters = {}) => {
 const calculateAuditStatistics = (logs) => {
   const stats = {
     validations: {
-      total: 0,
+      total: logs.length,
       approved: 0,
-      rejected: 0
+      rejected: 0,
+      errors: 0
     },
     registrationTypes: {
       qr_scan: 0,
-      manual: 0
+      manual: 0,
+      rut: 0
     },
     ticketCategories: {
       normal: 0,
-      vip: 0
+      vip: 0,
+      general: 0,
+      premium: 0,
+      other: 0
     }
   };
 
   logs.forEach(log => {
-    if (log.action === 'TICKET_VALIDATED') {
-      stats.validations.total++;
-      
-      if (log.details?.success) {
-        stats.validations.approved++;
-      } else {
-        stats.validations.rejected++;
-      }
+    // Contar por resultado de validación
+    if (log.validation_result === 'approved') {
+      stats.validations.approved++;
+    } else if (log.validation_result === 'rejected') {
+      stats.validations.rejected++;
+    } else if (log.validation_result === 'error') {
+      stats.validations.errors++;
+    }
 
-      const method = log.details?.method?.toLowerCase();
-      if (method === 'qr_scan' || method === 'qr') {
-        stats.registrationTypes.qr_scan++;
-      } else if (method === 'manual') {
-        stats.registrationTypes.manual++;
-      }
+    // Contar por tipo de validación
+    const validationType = log.validation_type?.toLowerCase();
+    if (validationType === 'qr') {
+      stats.registrationTypes.qr_scan++;
+    } else if (validationType === 'manual') {
+      stats.registrationTypes.manual++;
+    } else if (validationType === 'rut') {
+      stats.registrationTypes.rut++;
+    }
 
-      const ticketType = log.details?.ticketType?.toLowerCase();
-      if (ticketType?.includes('vip')) {
-        stats.ticketCategories.vip++;
-      } else {
-        stats.ticketCategories.normal++;
-      }
+    // Contar por categoría de ticket
+    const category = log.ticket_category?.toLowerCase();
+    if (category && stats.ticketCategories[category] !== undefined) {
+      stats.ticketCategories[category]++;
+    } else if (category) {
+      stats.ticketCategories.other++;
     }
   });
 
@@ -470,12 +470,36 @@ const calculateAuditStatistics = (logs) => {
 };
 
 /**
- * Obtiene el texto de la acción en español
+ * Obtiene el texto del tipo de validación en español
+ */
+const getValidationTypeText = (type) => {
+  const types = {
+    'qr': '[QR]',
+    'manual': '[MANUAL]',
+    'rut': '[RUT]'
+  };
+  return types[type?.toLowerCase()] || 'N/A';
+};
+
+/**
+ * Obtiene el texto del resultado de validación
+ */
+const getValidationResultText = (result) => {
+  const results = {
+    'approved': 'Aprobado',
+    'rejected': 'Rechazado',
+    'error': 'Error'
+  };
+  return results[result] || result || 'N/A';
+};
+
+/**
+ * Obtiene el texto de la acción en español (legacy)
  */
 const getAuditActionText = (action) => {
   const actions = {
-    'TICKET_VALIDATED': 'Validación',
-    'TICKET_CREATED': 'Creación',
+    'TICKET_VALIDATED': 'Validacion',
+    'TICKET_CREATED': 'Creacion',
     'USER_LOGIN': 'Login',
     'USER_LOGOUT': 'Logout',
     'EVENT_CREATED': 'Evento Creado',
@@ -485,11 +509,183 @@ const getAuditActionText = (action) => {
 };
 
 /**
- * Obtiene el texto del resultado
+ * Obtiene el texto del resultado (legacy)
  */
 const getAuditResultText = (log) => {
   if (log.action === 'TICKET_VALIDATED') {
     return log.details?.success ? 'Aprobado' : 'Rechazado';
   }
   return log.details?.success ? 'Exitoso' : 'Fallido';
+};
+
+/**
+ * Genera un PDF con estadísticas generales del sistema
+ * @param {Object} stats - Objeto con estadísticas del sistema
+ * @returns {PDFDocument} Documento PDF
+ */
+export const generateStatisticsPDF = (stats) => {
+  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+
+  // Configuración de colores
+  const primaryColor = '#0d6efd';
+  const textColor = '#333333';
+  const lightGray = '#f8f9fa';
+  const borderColor = '#dee2e6';
+
+  let yPos = 50;
+
+  // ===== ENCABEZADO =====
+  doc.rect(0, 0, doc.page.width, 80).fill(primaryColor);
+  
+  doc.fontSize(24)
+     .fillColor('#FFFFFF')
+     .font('Helvetica-Bold')
+     .text('REPORTE DE ESTADISTICAS', 50, 25, { align: 'center' });
+
+  doc.fontSize(12)
+     .fillColor('#FFFFFF')
+     .font('Helvetica')
+     .text(`Generado: ${new Date().toLocaleString('es-CL')}`, 50, 55, { align: 'center' });
+
+  yPos = 100;
+
+  // ===== RESUMEN GENERAL =====
+  doc.fontSize(16)
+     .fillColor(textColor)
+     .font('Helvetica-Bold')
+     .text('RESUMEN GENERAL', 50, yPos);
+
+  yPos += 30;
+
+  // Cuadro con estadísticas principales
+  const boxWidth = doc.page.width - 100;
+  const boxHeight = 140;
+  
+  doc.rect(50, yPos, boxWidth, boxHeight)
+     .fillAndStroke(lightGray, borderColor);
+
+  yPos += 20;
+
+  // Grid de estadísticas (2 columnas)
+  const col1X = 70;
+  const col2X = (doc.page.width / 2) + 20;
+  
+  doc.fontSize(12).fillColor(textColor).font('Helvetica');
+  
+  // Columna 1
+  doc.font('Helvetica-Bold').text('Total Eventos:', col1X, yPos);
+  doc.font('Helvetica').text(stats.totalEvents || 0, col1X + 150, yPos);
+  
+  yPos += 25;
+  doc.font('Helvetica-Bold').text('Tipos de Ticket:', col1X, yPos);
+  doc.font('Helvetica').text(stats.totalTicketTypes || 0, col1X + 150, yPos);
+  
+  yPos += 25;
+  doc.font('Helvetica-Bold').text('Aforo Total:', col1X, yPos);
+  doc.font('Helvetica').text((stats.totalCapacity || 0).toLocaleString('es-CL'), col1X + 150, yPos);
+  
+  // Columna 2
+  yPos = 140;
+  doc.font('Helvetica-Bold').text('Ingresos Potenciales:', col2X, yPos);
+  doc.font('Helvetica').text(`$${(stats.totalRevenue || 0).toLocaleString('es-CL')}`, col2X + 150, yPos);
+  
+  yPos += 25;
+  doc.font('Helvetica-Bold').text('Tickets Disponibles:', col2X, yPos);
+  doc.font('Helvetica').text((stats.availableTickets || 0).toLocaleString('es-CL'), col2X + 150, yPos);
+  
+  yPos += 25;
+  doc.font('Helvetica-Bold').text('Ocupación Promedio:', col2X, yPos);
+  doc.font('Helvetica').text(`${(stats.averageOccupancy || 0).toFixed(1)}%`, col2X + 150, yPos);
+
+  yPos += 50;
+
+  // ===== DETALLE POR EVENTO =====
+  doc.fontSize(16)
+     .fillColor(textColor)
+     .font('Helvetica-Bold')
+     .text('DETALLE POR EVENTO', 50, yPos);
+
+  yPos += 25;
+
+  // Verificar si hay eventos
+  if (!stats.events || stats.events.length === 0) {
+    doc.fontSize(12)
+       .fillColor('#6c757d')
+       .font('Helvetica-Oblique')
+       .text('No hay eventos registrados', 50, yPos);
+  } else {
+    // Tabla de eventos
+    stats.events.forEach((event, index) => {
+      // Verificar espacio en la página
+      if (yPos > 700) {
+        doc.addPage();
+        yPos = 50;
+      }
+
+      // Fondo alternado para filas
+      const rowHeight = 80;
+      if (index % 2 === 0) {
+        doc.rect(50, yPos, boxWidth, rowHeight).fill(lightGray);
+      }
+
+      yPos += 10;
+
+      // Nombre del evento
+      doc.fontSize(14)
+         .fillColor(primaryColor)
+         .font('Helvetica-Bold')
+         .text(event.name || 'Sin nombre', 60, yPos, { width: boxWidth - 20 });
+
+      yPos += 20;
+
+      // Detalles del evento
+      doc.fontSize(10).fillColor(textColor).font('Helvetica');
+      
+      const detailsY = yPos;
+      // Columna 1
+      doc.text(`Fecha: ${event.date || 'Sin fecha'}`, 60, detailsY);
+      doc.text(`Lugar: ${event.venue || 'Sin ubicacion'}`, 60, detailsY + 12);
+      
+      // Columna 2
+      doc.text(`Tipos: ${event.ticketTypes || 0}`, 240, detailsY);
+      doc.text(`Aforo: ${(event.capacity || 0).toLocaleString('es-CL')}`, 240, detailsY + 12);
+      
+      // Columna 3
+      doc.text(`Ingresos: $${(event.revenue || 0).toLocaleString('es-CL')}`, 380, detailsY);
+      doc.text(`Ocupacion: ${event.occupancy || 0}%`, 380, detailsY + 12);
+
+      yPos += 50;
+      
+      // Línea separadora
+      doc.strokeColor(borderColor)
+         .lineWidth(0.5)
+         .moveTo(50, yPos)
+         .lineTo(doc.page.width - 50, yPos)
+         .stroke();
+
+      yPos += 10;
+    });
+  }
+
+  // ===== PIE DE PÁGINA =====
+  const footerY = doc.page.height - 50;
+  doc.fontSize(8)
+     .fillColor('#6c757d')
+     .font('Helvetica')
+     .text(
+       'Este reporte fue generado automáticamente por el Sistema de Boletería TicketVue',
+       50,
+       footerY,
+       { align: 'center', width: doc.page.width - 100 }
+     );
+
+  doc.fontSize(8)
+     .text(
+       `Página 1 de 1 | ${new Date().toLocaleDateString('es-CL')}`,
+       50,
+       footerY + 15,
+       { align: 'center', width: doc.page.width - 100 }
+     );
+
+  return doc;
 };

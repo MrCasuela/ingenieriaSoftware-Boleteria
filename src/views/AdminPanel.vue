@@ -142,25 +142,14 @@
                 </div>
               </div>
 
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Lugar/Venue *</label>
-                  <input 
-                    v-model="eventForm.venue" 
-                    type="text" 
-                    required 
-                    placeholder="Ej: Estadio Nacional"
-                  />
-                </div>
-                <div class="form-group">
-                  <label>Ciudad *</label>
-                  <input 
-                    v-model="eventForm.city" 
-                    type="text" 
-                    required 
-                    placeholder="Ej: Santiago"
-                  />
-                </div>
+              <div class="form-group">
+                <label>Lugar/Venue *</label>
+                <input 
+                  v-model="eventForm.venue" 
+                  type="text" 
+                  required 
+                  placeholder="Ej: Estadio Luna Park, Buenos Aires"
+                />
               </div>
 
               <div class="form-row">
@@ -328,9 +317,15 @@
                   type="number" 
                   required 
                   min="1"
+                  :max="getAvailableCapacity()"
                   placeholder="Ej: 100"
                 />
-                <small class="form-hint">
+                <small class="form-hint" v-if="ticketTypeForm.eventId">
+                  <strong>Capacidad del evento:</strong> {{ getEventCapacity(ticketTypeForm.eventId) }} <br>
+                  <strong>Ya asignados:</strong> {{ getAssignedCapacity(ticketTypeForm.eventId) }} <br>
+                  <strong>Disponibles:</strong> <span :class="{ 'text-warning': getAvailableCapacity() < 100, 'text-success': getAvailableCapacity() >= 100 }">{{ getAvailableCapacity() }}</span>
+                </small>
+                <small class="form-hint" v-else>
                   Número máximo de tickets de este tipo que se pueden vender
                 </small>
               </div>
@@ -1002,28 +997,6 @@
               </div>
             </div>
           </div>
-
-          <div class="breakdown-card">
-            <h3>🎫 Por Categoría de Ticket</h3>
-            <div class="breakdown-items">
-              <div class="breakdown-item">
-                <span class="breakdown-label">🎟️ Normal</span>
-                <span class="breakdown-value">{{ auditStats.byCategory?.normal || 0 }}</span>
-              </div>
-              <div class="breakdown-item">
-                <span class="breakdown-label">⭐ VIP</span>
-                <span class="breakdown-value">{{ auditStats.byCategory?.vip || 0 }}</span>
-              </div>
-              <div class="breakdown-item">
-                <span class="breakdown-label">👥 General</span>
-                <span class="breakdown-value">{{ auditStats.byCategory?.general || 0 }}</span>
-              </div>
-              <div class="breakdown-item">
-                <span class="breakdown-label">💎 Premium</span>
-                <span class="breakdown-value">{{ auditStats.byCategory?.premium || 0 }}</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- Filtros de Búsqueda -->
@@ -1167,30 +1140,19 @@
     <div v-if="showPDFDownloadModal" class="modal-overlay" @click.self="showPDFDownloadModal = false">
       <div class="modal-content modal-small">
         <div class="modal-header">
-          <h3>📄 Descargar Reporte PDF de Auditoría</h3>
+          <h3>� Descargar Reporte de Estadísticas</h3>
           <button @click="showPDFDownloadModal = false" class="btn-close">✖</button>
         </div>
         <div class="modal-body">
-          <div class="form-group">
-            <label>Seleccione un Evento *</label>
-            <select v-model.number="pdfEventId" required class="form-control">
-              <option value="">-- Seleccione un evento --</option>
-              <option v-for="event in events" :key="event.id" :value="event.id">
-                {{ event.name }} - {{ formatDate(event.date) }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>Fecha Inicio (Opcional)</label>
-              <input v-model="pdfStartDate" type="date" class="form-control" />
-            </div>
-            <div class="form-group">
-              <label>Fecha Fin (Opcional)</label>
-              <input v-model="pdfEndDate" type="date" class="form-control" />
-            </div>
-          </div>
+          <p class="info-message">
+            Este reporte incluirá todas las estadísticas generales del sistema:
+          </p>
+          <ul class="stats-list">
+            <li>📊 Total de eventos y tipos de tickets</li>
+            <li>👥 Aforo total y capacidad disponible</li>
+            <li>💰 Ingresos potenciales</li>
+            <li>📈 Detalle por evento con ocupación</li>
+          </ul>
 
           <div v-if="pdfDownloading" class="loading-message">
             <div class="spinner"></div>
@@ -1216,7 +1178,7 @@
           <button 
             @click="downloadPDFReport" 
             class="btn-primary"
-            :disabled="!pdfEventId || pdfDownloading"
+            :disabled="pdfDownloading"
           >
             📥 Descargar PDF
           </button>
@@ -1301,7 +1263,7 @@ export default {
 
     // PDF Download State
     const showPDFDownloadModal = ref(false)
-    const pdfEventId = ref('')
+    const pdfEventId = ref(null)
     const pdfStartDate = ref('')
     const pdfEndDate = ref('')
     const pdfDownloading = ref(false)
@@ -1325,7 +1287,6 @@ export default {
       date: '',
       time: '',
       venue: '',
-      city: '',
       totalCapacity: 0,
       imageUrl: ''
     })
@@ -1418,11 +1379,16 @@ export default {
             date: event.date ? new Date(event.date).toISOString().split('T')[0] : '',
             time: event.date ? new Date(event.date).toTimeString().slice(0, 5) : '',
             venue: event.location || '',
-            city: event.city || '',
-            totalCapacity: event.total_capacity || 0,
-            imageUrl: event.image || 'https://picsum.photos/400/300'
+            totalCapacity: event.totalCapacity || event.total_capacity || 0,
+            imageUrl: event.image || 'https://picsum.photos/400/300',
+            minPrice: 0
           }))
           console.log('✅ Eventos cargados desde la base de datos:', events.value.length)
+          
+          // Calcular precio mínimo para cada evento
+          events.value.forEach(event => {
+            updateEventMinPrice(event.id)
+          })
         } else {
           console.log('ℹ️ No hay eventos en la base de datos')
           events.value = []
@@ -1521,6 +1487,29 @@ export default {
       }, 0)
     }
 
+    const getEventCapacity = (eventId) => {
+      const event = events.value.find(e => e.id === eventId)
+      return event ? event.totalCapacity : 0
+    }
+
+    const getAssignedCapacity = (eventId) => {
+      const eventTickets = ticketTypes.value.filter(tt => tt.eventId === eventId)
+      // Si estamos editando, excluir el ticket actual del cálculo
+      if (editingTicketType.value) {
+        return eventTickets
+          .filter(tt => tt.id !== editingTicketType.value)
+          .reduce((sum, tt) => sum + (tt.capacity || 0), 0)
+      }
+      return eventTickets.reduce((sum, tt) => sum + (tt.capacity || 0), 0)
+    }
+
+    const getAvailableCapacity = () => {
+      if (!ticketTypeForm.value.eventId) return 0
+      const totalCapacity = getEventCapacity(ticketTypeForm.value.eventId)
+      const assigned = getAssignedCapacity(ticketTypeForm.value.eventId)
+      return Math.max(0, totalCapacity - assigned)
+    }
+
     const closeEventForm = () => {
       showEventForm.value = false
       editingEvent.value = null
@@ -1541,7 +1530,6 @@ export default {
         date: '',
         time: '',
         venue: '',
-        city: '',
         totalCapacity: 0,
         imageUrl: ''
       }
@@ -1586,7 +1574,7 @@ export default {
           name: eventForm.value.name,
           description: eventForm.value.description,
           date: dateTimeString,
-          location: `${eventForm.value.venue}${eventForm.value.city ? ', ' + eventForm.value.city : ''}`,
+          location: eventForm.value.venue,
           image: eventForm.value.imageUrl || 'https://via.placeholder.com/400x200',
           category: eventForm.value.category,
           totalCapacity: parseInt(eventForm.value.totalCapacity) || 0,
@@ -1687,6 +1675,13 @@ export default {
         if (!ticketTypeForm.value.eventId) {
           console.error('❌ VALIDACIÓN FALLIDA: eventId está vacío')
           alert('❌ Error: Debe seleccionar un evento')
+          return
+        }
+
+        // Validar que la capacidad no exceda el límite disponible
+        const availableCapacity = getAvailableCapacity()
+        if (ticketTypeForm.value.capacity > availableCapacity) {
+          alert(`❌ Error: La capacidad ingresada (${ticketTypeForm.value.capacity}) excede la capacidad disponible del evento (${availableCapacity}).\n\nCapacidad total del evento: ${getEventCapacity(ticketTypeForm.value.eventId)}\nYa asignados: ${getAssignedCapacity(ticketTypeForm.value.eventId)}\nDisponibles: ${availableCapacity}`)
           return
         }
         
@@ -2107,26 +2102,26 @@ export default {
      * Descarga reporte PDF desde modal de estadísticas
      */
     const downloadPDFReport = async () => {
-      if (!pdfEventId.value) {
-        pdfError.value = 'Por favor selecciona un evento'
-        return
-      }
-
       pdfDownloading.value = true
       pdfError.value = ''
       pdfSuccess.value = ''
 
       try {
-        const response = await fetch('http://localhost:3000/api/audit/generate-pdf', {
+        // Obtener el token del localStorage
+        const token = localStorage.getItem('apiToken')
+        
+        if (!token) {
+          pdfError.value = 'No se encontró token de autenticación. Por favor, vuelve a iniciar sesión.'
+          return
+        }
+
+        const response = await fetch('http://localhost:3000/api/admin/generate-statistics-pdf', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({
-            eventId: pdfEventId.value,
-            startDate: pdfStartDate.value || undefined,
-            endDate: pdfEndDate.value || undefined
-          })
+          body: JSON.stringify({})
         })
 
         if (response.ok) {
@@ -2136,14 +2131,10 @@ export default {
           // Crear URL del blob
           const url = window.URL.createObjectURL(blob)
           
-          // Obtener nombre del evento
-          const event = events.value.find(e => e.id === pdfEventId.value)
-          const eventName = event ? event.name.replace(/\s/g, '-') : 'evento'
-          
           // Crear link temporal y hacer click para descargar
           const link = document.createElement('a')
           link.href = url
-          link.download = `reporte-auditoria-${eventName}-${Date.now()}.pdf`
+          link.download = `reporte-estadisticas-${Date.now()}.pdf`
           document.body.appendChild(link)
           link.click()
           document.body.removeChild(link)
@@ -2157,9 +2148,6 @@ export default {
           setTimeout(() => {
             showPDFDownloadModal.value = false
             pdfSuccess.value = ''
-            pdfEventId.value = ''
-            pdfStartDate.value = ''
-            pdfEndDate.value = ''
           }, 2000)
         } else {
           const error = await response.json()
@@ -2252,6 +2240,9 @@ export default {
       getEventTicketTypesCount,
       getEventOccupancy,
       getEventRevenue,
+      getEventCapacity,
+      getAssignedCapacity,
+      getAvailableCapacity,
       closeEventForm,
       closeTicketTypeForm,
       editEvent,
@@ -2935,6 +2926,21 @@ export default {
   font-size: 12px;
   color: #999;
   margin-top: 5px;
+  line-height: 1.5;
+}
+
+.form-hint strong {
+  color: #333;
+}
+
+.form-hint .text-warning {
+  color: #f39c12;
+  font-weight: 600;
+}
+
+.form-hint .text-success {
+  color: #27ae60;
+  font-weight: 600;
 }
 
 .form-actions {
@@ -3628,5 +3634,23 @@ export default {
 
 .modal-body {
   padding: 1.5rem;
+}
+
+.info-message {
+  margin-bottom: 1rem;
+  color: #495057;
+  font-size: 0.95rem;
+}
+
+.stats-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.stats-list li {
+  padding: 0.5rem 0;
+  color: #495057;
+  font-size: 0.9rem;
 }
 </style>

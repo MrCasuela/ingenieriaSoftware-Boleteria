@@ -1,6 +1,7 @@
 import TicketType from '../models/TicketType.js';
 import Event from '../models/Event.js';
 import logger from '../utils/logger.js';
+import { Op } from 'sequelize';
 
 /**
  * Obtener todos los tipos de tickets
@@ -171,6 +172,31 @@ export const createTicketType = async (req, res) => {
     
     logger.success('TICKET_TYPES', `Evento encontrado: ${event.name} (ID: ${event.id})`);
     
+    // Validar que la suma de capacidades no exceda la capacidad total del evento
+    const existingTicketTypes = await TicketType.findAll({ where: { eventId: event_id } });
+    const totalAssignedCapacity = existingTicketTypes.reduce((sum, tt) => sum + tt.quantity, 0);
+    const newTotalCapacity = totalAssignedCapacity + parseInt(total_capacity);
+    
+    if (newTotalCapacity > event.total_capacity) {
+      logger.warn('TICKET_TYPES', 'Capacidad excedida', {
+        eventCapacity: event.total_capacity,
+        assignedCapacity: totalAssignedCapacity,
+        requestedCapacity: parseInt(total_capacity),
+        newTotal: newTotalCapacity
+      });
+      
+      return res.status(400).json({
+        success: false,
+        message: `La capacidad total de los tipos de ticket (${newTotalCapacity}) excedería la capacidad del evento (${event.total_capacity})`,
+        details: {
+          eventCapacity: event.total_capacity,
+          alreadyAssigned: totalAssignedCapacity,
+          available: event.total_capacity - totalAssignedCapacity,
+          requested: parseInt(total_capacity)
+        }
+      });
+    }
+    
     // Mapear campos del API a los campos del modelo
     const ticketTypeData = {
       eventId: event_id,
@@ -234,6 +260,42 @@ export const updateTicketType = async (req, res) => {
         success: false,
         message: 'Tipo de ticket no encontrado'
       });
+    }
+    
+    // Si se está cambiando la capacidad, validar que no exceda el límite del evento
+    if (total_capacity !== undefined) {
+      const event = await Event.findByPk(ticketType.eventId);
+      
+      if (!event) {
+        return res.status(404).json({
+          success: false,
+          message: 'Evento no encontrado'
+        });
+      }
+      
+      // Calcular la capacidad total asignada excluyendo este ticket type
+      const existingTicketTypes = await TicketType.findAll({ 
+        where: { 
+          eventId: ticketType.eventId,
+          id: { [Op.ne]: id } // Excluir el ticket type actual
+        } 
+      });
+      
+      const totalAssignedCapacity = existingTicketTypes.reduce((sum, tt) => sum + tt.quantity, 0);
+      const newTotalCapacity = totalAssignedCapacity + parseInt(total_capacity);
+      
+      if (newTotalCapacity > event.total_capacity) {
+        return res.status(400).json({
+          success: false,
+          message: `La capacidad total de los tipos de ticket (${newTotalCapacity}) excedería la capacidad del evento (${event.total_capacity})`,
+          details: {
+            eventCapacity: event.total_capacity,
+            alreadyAssigned: totalAssignedCapacity,
+            available: event.total_capacity - totalAssignedCapacity,
+            requested: parseInt(total_capacity)
+          }
+        });
+      }
     }
     
     // Mapear campos del API a los campos del modelo

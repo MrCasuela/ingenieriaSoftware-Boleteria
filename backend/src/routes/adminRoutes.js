@@ -7,7 +7,8 @@ import {
   toggleUserStatus,
   updateAdminPermissions,
   getUserStats,
-  getAttendanceReport
+  getAttendanceReport,
+  generateStatisticsPDF
 } from '../controllers/adminController.js';
 import { protect, adminOnly, checkAdminPermission } from '../middleware/auth.js';
 import { 
@@ -151,5 +152,7 @@ router.get('/reports/attendance/export/pdf', async (req, res) => {
   return res.redirect(307, '/api/reports/tickets/pdf');
 });
 
+// Generar reporte PDF de estadísticas
+router.post('/generate-statistics-pdf', generateStatisticsPDF);
 
 export default router;

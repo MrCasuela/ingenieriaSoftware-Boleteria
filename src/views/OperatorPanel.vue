@@ -83,36 +83,19 @@
         <div class="manual-section">
           <div class="manual-title">Ingreso Manual por Código o RUT</div>
           
-          <!-- Opción 1: Por Código de Ticket -->
+          <!-- Opción única: Validar por Código o RUT -->
           <div class="validation-option">
-            <h4 class="option-title">📋 Opción 1: Validar por Código</h4>
+            <h4 class="option-title">🎫 Validar por Código o RUT</h4>
             <div class="input-group">
               <input 
                 v-model="manualInput" 
                 type="text" 
-                placeholder="Ingrese código del ticket (TKT-XXXXX)..." 
+                placeholder="Ingrese código del ticket (TKT-XXXXX) o RUT del usuario (12345678-9)..." 
                 class="manual-input"
                 @keyup.enter="validateManual"
               >
               <button @click="validateManual" class="validate-btn">
-                🔍 Validar
-              </button>
-            </div>
-          </div>
-
-          <!-- Opción 2: Por RUT del Usuario -->
-          <div class="validation-option">
-            <h4 class="option-title">👤 Opción 2: Validar por RUT</h4>
-            <div class="input-group">
-              <input 
-                v-model="rutInput" 
-                type="text" 
-                placeholder="Ingrese RUT del usuario (12345678-9)..." 
-                class="manual-input"
-                @keyup.enter="validateByRut"
-              >
-              <button @click="validateByRut" class="validate-btn-rut">
-                👤 Buscar Tickets
+                � Validar
               </button>
             </div>
           </div>
@@ -121,9 +104,9 @@
             <p><strong>💡 Instrucciones:</strong></p>
             <ul>
               <li>Use el escaneo QR presionando ENTER/ESPACIO cuando muestre el código</li>
-              <li>Si el QR no funciona, ingrese el código del ticket manualmente</li>
-              <li>Si el QR está dañado, ingrese el RUT del usuario para buscar sus tickets</li>
-              <li>El sistema verificará en la base de datos si el usuario tiene tickets válidos</li>
+              <li>Si el QR no funciona, ingrese el código del ticket manualmente (TKT-XXXXX)</li>
+              <li>También puede ingresar el RUT del usuario (12345678-9) para buscar sus tickets</li>
+              <li>El sistema detecta automáticamente si es un código o un RUT</li>
             </ul>
           </div>
         </div>
@@ -227,7 +210,6 @@ export default {
     const isScanning = ref(false)
     const stream = ref(null)
     const manualInput = ref('')
-    const rutInput = ref('')
     const showModal = ref(false)
     const validationResult = ref({
       success: false,
@@ -546,15 +528,26 @@ export default {
     }
 
     const validateManual = async () => {
-      const code = manualInput.value.trim()
+      const input = manualInput.value.trim()
       
-      if (!code) {
-        showResult('❌ Código Requerido', 'Por favor ingrese un código de ticket.', false)
+      if (!input) {
+        showResult('❌ Entrada Requerida', 'Por favor ingrese un código de ticket o RUT.', false)
         return
       }
       
-      console.log(`🔍 Validando código manual: ${code}`)
+      // Detectar si es un RUT (formato: 12345678-9 o solo números)
+      const isRUT = /^\d{7,8}-?[\dkK]$/.test(input)
       
+      if (isRUT) {
+        console.log(`🔍 Detectado RUT, validando: ${input}`)
+        await validateByRutLogic(input)
+      } else {
+        console.log(`🔍 Detectado código de ticket, validando: ${input}`)
+        await validateByCodeLogic(input)
+      }
+    }
+    
+    const validateByCodeLogic = async (code) => {
       // Validar con el sistema de seguridad mejorado
       const validationResult = ticketStore.validateTicket(code, authStore.userName)
       
@@ -605,45 +598,78 @@ export default {
         validationResult.ticket
       )
     }
-
-    const validateByRut = async () => {
-      const rut = rutInput.value.trim()
-      
-      if (!rut) {
-        showResult('❌ RUT Requerido', 'Por favor ingrese el RUT del usuario.', false)
-        return
-      }
-      
-      console.log(`👤 Buscando tickets por RUT: ${rut}`)
-      
+    
+    const validateByRutLogic = async (rut) => {
       try {
-        // Buscar tickets del usuario en la base de datos
-        const response = await fetch(`/api/tickets/by-rut/${encodeURIComponent(rut)}`)
+        console.log(`🔎 Buscando tickets para RUT: ${rut}`)
         
-        if (!response.ok) {
-          throw new Error('Error al buscar tickets')
-        }
+        // Obtener el token JWT desde localStorage
+        const token = localStorage.getItem('apiToken')
         
-        const data = await response.json()
-        
-        if (!data.success || !data.tickets || data.tickets.length === 0) {
+        if (!token) {
+          console.error('❌ No hay token de autenticación')
+          console.error('❌ Verifica que hayas iniciado sesión correctamente')
           playErrorSound()
           vibrateDevice([200, 100, 200])
           
-          await AuditService.logValidation(
-            `RUT-${rut}`,
-            authStore.userName,
-            false,
-            {
-              message: 'No se encontraron tickets para este RUT',
-              fraudDetected: false,
-              validationType: 'rut'
-            }
+          showResult(
+            '❌ Error de Autenticación',
+            'No se pudo verificar tu sesión. Por favor, vuelve a iniciar sesión.',
+            false
           )
+          return
+        }
+        
+        console.log('✅ Token encontrado:', token.substring(0, 20) + '...')
+        
+        // Llamar al backend para buscar tickets por RUT
+        const response = await fetch(`http://localhost:3000/api/tickets/by-rut/${rut}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            playErrorSound()
+            vibrateDevice([200, 100, 200])
+            
+            showResult(
+              '❌ RUT No Encontrado',
+              `No se encontraron tickets asociados al RUT ${rut}. Verifique el RUT o solicite ayuda.`,
+              false
+            )
+            return
+          } else if (response.status === 401) {
+            playErrorSound()
+            vibrateDevice([200, 100, 200])
+            
+            showResult(
+              '❌ Sesión Expirada',
+              'Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.',
+              false
+            )
+            // Cerrar sesión y redirigir
+            setTimeout(() => {
+              handleLogout()
+            }, 2000)
+            return
+          }
+          throw new Error('Error al consultar tickets')
+        }
+        
+        const data = await response.json()
+        console.log('📋 Tickets encontrados:', data)
+        
+        if (!data.tickets || data.tickets.length === 0) {
+          playErrorSound()
+          vibrateDevice([200, 100, 200])
           
           showResult(
             '❌ Sin Tickets',
-            `No se encontraron tickets para el RUT ${rut}. Verifique el RUT ingresado.`,
+            `No se encontraron tickets para el RUT ${rut}.`,
             false
           )
           return
@@ -673,7 +699,7 @@ export default {
         if (validationResult.valid) {
           // Marcar ticket como usado
           ticketStore.markTicketAsUsed(ticket.codigo)
-          rutInput.value = ''
+          manualInput.value = ''
           
           playSuccessSound()
           vibrateDevice([100])
@@ -715,7 +741,7 @@ export default {
         
         showResult(
           '❌ Error del Sistema',
-          'No se pudo conectar con la base de datos para verificar el RUT. Intente nuevamente o use validación por código.',
+          'No se pudo conectar con la base de datos para verificar el RUT. Intente nuevamente.',
           false
         )
       }
@@ -804,7 +830,6 @@ export default {
       videoElement,
       isScanning,
       manualInput,
-      rutInput,
       showModal,
       validationResult,
       operatorName,
@@ -817,7 +842,6 @@ export default {
       startScanning,
       stopScanning,
       validateManual,
-      validateByRut,
       closeModal,
       closeModalOnBackdrop,
       handleLogout,
@@ -1143,24 +1167,6 @@ export default {
 
 .validate-btn:hover {
   background: #218838;
-  transform: translateY(-1px);
-}
-
-.validate-btn-rut {
-  background: #007bff;
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-}
-
-.validate-btn-rut:hover {
-  background: #0056b3;
   transform: translateY(-1px);
 }
 

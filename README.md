@@ -34,16 +34,20 @@ Aplicación web completa que permite:
 
 ### 1. Instalar Dependencias
 
-**Frontend:**
-```bash
-npm install
-```
+### Levantar
+docker-compose up -d --build
 
-**Backend:**
-```bash
-cd backend
-npm install
-```
+### Comprueba que todo Funciona:
+docker-compose ps
+
+### Si todo eso esta OK, espera 20 segundos.
+NAME                COMMAND                  STATE           PORTS
+proyecto-backend-1  "docker-entrypoint..."   running         0.0.0.0:3000->3000/tcp
+proyecto-db-1       "docker-entrypoint..."   running         3306/tcp
+proyecto-frontend-1 "docker-entrypoint..."   running         0.0.0.0:80->80/tcp
+
+### URL en Web
+localhost
 
 ### 2. Configurar Base de Datos
 
@@ -67,26 +71,6 @@ Inicializar datos:
 ```bash
 cd backend
 npm run seed
-```
-
-### 3. Ejecutar Aplicación
-
-#### Opción A: Docker (Recomendado)
-```bash
-docker-compose up
-```
-
-#### Opción B: Ejecución Local
-
-**Terminal 1 - Backend:**
-```bash
-cd backend
-npm start
-```
-
-**Terminal 2 - Frontend:**
-```bash
-npm run dev
 ```
 
 **Acceso:**
@@ -298,38 +282,6 @@ Para más detalles, consulta:
 
 Proyecto de código abierto - Licencia MIT
 
-## 👥 Equipo
-
-Equipo de Desarrollo - Ingeniería de Software
-
-## Sprint 1
-Benjamín Vivanco:
-- Creacion del BackEnd
-- Vista de operador.
-- Estructura de facilitaroes visuales.
-- Desarallo de la vista completa, a través de framework View.
-- Uso de JavaScript.
-
-Pablo Sepulveda:
-- Creacion Backend
-- Integrar base de datos.
-- Integrar Docker
-- Utilizo Api Node.js
-- Utilizo Api EndPoints
-
-Fernando Salazar:
-
-- 
-
-- Sistema de envio por email
-
-
-Javier Cancino:
-- Creacion Jira
-- Ajustes de Historias de usaurio
-- Ajuste SubTares.
-
----
 
 **Versión:** 2.0.0  
-**Última actualización:** Octubre 2025
+**Última actualización:** Noviembre 2025

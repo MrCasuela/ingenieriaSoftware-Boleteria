@@ -132,22 +132,38 @@ Accesos rápidos:
 ---
 
 ## 📊 Estructura del Proyecto
-
+ # Frontend
 ingenieriaSoftware-Boleteria/
-├── src/                      # Frontend
+├── src/    
+
 │   ├── views/
+
 │   ├── components/
+
 │   ├── stores/
+
 │   ├── services/
+
 │   └── router/
-├── backend/                  # API Node/Express
+
+ # API Node/Express
+
+
+├── backend/                 
 │   ├── src/
+
 │   │   ├── models/
+
 │   │   ├── controllers/
+
 │   │   ├── routes/
+
 │   │   └── config/
+
 │   └── server.js
+
 ├── docker-compose.yml
+
 └── package.json
 
 

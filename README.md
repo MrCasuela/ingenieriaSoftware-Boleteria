@@ -132,43 +132,35 @@ Accesos rápidos:
 ---
 
 ## 📊 Estructura del Proyecto
- # Frontend
-ingenieriaSoftware-Boleteria/
-
-
-├── src/    
-
-│   ├── views/
-
-│   ├── components/
-
-│   ├── stores/
-
-│   ├── services/
-
-│   └── router/
-
- # API Node/Express
-
-
-├── backend/                 
+<pre> 
+ ingenieriaSoftware-Boleteria/
+├── frontend/                     # App Vue 3 (cliente)
 │   ├── src/
+│   │   ├── assets/               # Imágenes, estilos globales
+│   │   ├── components/           # Componentes reutilizables
+│   │   ├── router/               # Rutas (Vue Router)
+│   │   ├── services/             # Llamadas a API (axios/fetch)
+│   │   ├── stores/               # Estado global (Pinia)
+│   │   ├── views/                # Vistas (Home, Eventos, Login, etc.)
+│   │   └── main.js               # Punto de entrada del frontend
+│   ├── index.html
+│   └── package.json
+│
+├── backend/                      # API Node.js + Express
+│   ├── src/
+│   │   ├── config/               # Configuración (DB, entorno)
+│   │   ├── controllers/          # Lógica de negocio
+│   │   ├── middlewares/          # Auth, validaciones
+│   │   ├── models/               # Modelos / Sequelize
+│   │   └── routes/               # Endpoints (usuarios, eventos, tickets)
+│   └── server.js                 # Punto de entrada del backend
+│
+├── docker-compose.yml             # Orquestación (frontend, backend, DB)
+├── .env.example                   # Variables de entorno de ejemplo
+├── package.json                   # Dependencias / scripts del monorepo
+└── README.md                      # Documentación general
 
-│   │   ├── models/
-
-│   │   ├── controllers/
-
-│   │   ├── routes/
-
-│   │   └── config/
-
-│   └── server.js
-
-├── docker-compose.yml
-
-└── package.json
-
-
+</pre>
 ---
 
 ## 🔌 API Endpoints

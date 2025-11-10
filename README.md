@@ -1,122 +1,87 @@
-🎫 TicketVue — Sistema de Boletería para Eventos
+# 🎫 TicketVue — Sistema de Boletería para Eventos
 
-Aplicación completa para la compra, validación y administración de tickets de eventos, desarrollada con Vue.js, Node.js, Express y MySQL.
-Incluye arquitectura Docker, validación por QR, panel de operador y administración con autenticación JWT.
+Sistema completo para compra, validación y administración de tickets con Vue.js, Node.js, Express y MySQL. Incluye validación por QR, panel de operador, panel de administración con JWT y orquestación con Docker.
 
-📋 Descripción General
+## 📚 Tabla de Contenidos
+- [Descripción](#-descripción)
+- [Arquitectura](#-arquitectura)
+- [Instalación y Ejecución](#-instalación-y-ejecución)
+- [Funcionalidades](#-funcionalidades)
+- [Estructura del Proyecto](#-estructura-del-proyecto)
+- [API Endpoints](#-api-endpoints)
+- [Seguridad](#-seguridad)
+- [Base de Datos](#-base-de-datos)
+- [Solución de Problemas](#-solución-de-problemas)
+- [Logs y Monitoreo](#-logs-y-monitoreo)
+- [Equipo](#-equipo)
+- [Licencia](#-licencia)
 
-TicketVue es un sistema web que permite:
+## 📋 Descripción
+- 🛒 Compra de tickets rápida y segura
+- 🔍 Validación de entradas por QR, código o RUT (si aplica)
+- 🧑‍💼 Administración de eventos, tipos de tickets y usuarios
+- 🗄 Transacciones atómicas en MySQL y auditoría de validaciones
 
-🛒 Comprar tickets de manera rápida y segura.
+## 🏗 Arquitectura
+- Frontend: Vue 3 (Composition API), Pinia, Vue Router, Bootstrap 5, QRCode.js, jsPDF
+- Backend: Node.js, Express, Sequelize, MySQL 8.0, bcrypt, JWT
+- Infraestructura: Docker Compose (frontend + backend + MySQL)
 
-🔍 Validar entradas por código QR, ticket o RUT.
+---
 
-🧑‍💼 Administrar eventos, usuarios y reportes.
+## 🚀 Instalación y Ejecución
 
-🗄️ Gestionar la base de datos MySQL con transacciones atómicas.
+Hay DOS caminos independientes. Elige solo uno.
 
-🏗️ Arquitectura del Proyecto
-🖥️ Frontend (Vue.js 3)
+### Opción 1: Docker (Automática, “Docker lo hace todo”)
+Docker levanta frontend, backend y base de datos sin pasos manuales adicionales.
 
-Framework: Vue 3 + Composition API
+Requisitos:
+- Docker Desktop instalado y en ejecución
 
-Estado: Pinia
-
-Ruteo: Vue Router
-
-Interfaz: Bootstrap 5
-
-Generación QR/PDF: QRCode.js + jsPDF
-
-⚙️ Backend (Node.js + Express)
-
-Framework: Express.js
-
-ORM: Sequelize
-
-Base de Datos: MySQL 8.0
-
-Autenticación: bcrypt + JWT
-
-🐳 Infraestructura Docker
-
-Servicios: Frontend + Backend + Base de Datos (MySQL)
-
-Administración simplificada con docker-compose.
-
-🚀 Instalación y Ejecución
-🔧 Prerrequisitos
-
-Asegúrate de tener instalado:
-
-Node.js 16 o superior
-
-MySQL 8.0 o superior
-
-npm o yarn
-
-Docker Desktop 🐋
-
-GitHub Desktop (opcional para clonar el repo)
-
-🧭 1. Descargar el Repositorio
-
-Abre GitHub Desktop
-
-Presiona Ctrl + Shift + O
-
-Pega la URL del repositorio
-
-Haz clic en Clonar
-
-📦 2. Instalar Dependencias
-
-Frontend:
-
-npm install
-
-
-Backend:
-
-cd backend
-npm install
-
-🐋 3. Levantar el Sistema con Docker
+Comandos:
+bash
 docker compose up -d --build
-
-
-👉 Este comando:
-
-Construye las imágenes necesarias
-
-Levanta todos los servicios en segundo plano
-
-🧠 4. Verificar que todo funcione
 docker compose ps
 
 
-Si todo está correcto, deberías ver algo como:
+Accesos:
+- Frontend: http://localhost
+- Backend API: http://localhost:3000
 
-NAME                STATE           PORTS
-backend-1           running         0.0.0.0:3000->3000/tcp
-db-1                running         3306/tcp
-frontend-1          running         0.0.0.0:80->80/tcp
+Apagar/limpiar:
+bash
+docker compose down
+# Reset total (incluye borrar volúmenes/DB):
+docker compose down -v
+docker compose up -d --build
 
 
-⏳ Espera unos 20 segundos para que la base de datos inicie completamente.
+### Opción 2: Manual (Frontend + Backend + MySQL por separado)
+Instalas y gestionas cada parte tú mismo.
 
-🌐 5. Abrir en el Navegador
-http://localhost
+Requisitos:
+- Node.js 16+ y npm/yarn
+- MySQL 8.0+
 
-🗃️ 6. Configurar Base de Datos
+1) Frontend:
+bash
+npm install
 
-Si prefieres hacerlo manualmente:
 
+2) Backend:
+bash
+cd backend
+npm install
+
+
+3) Base de datos:
+sql
 CREATE DATABASE ticketing_system;
 
 
-Luego edita backend/.env:
-
+4) Variables de entorno (backend/.env):
+env
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=tu_password
@@ -126,143 +91,203 @@ PORT=3000
 NODE_ENV=development
 
 
-Inicializa datos:
-
+5) Semillas iniciales:
+bash
 cd backend
 npm run seed
 
-🔑 Accesos Rápidos
-Tipo de Usuario	Ruta	Usuario	Contraseña
-🧾 Operador	/operator/login	operador@ticketsystem.com
-	Operador123!
-👨‍💻 Administrador	/admin	admin@ticketsystem.com
-	Admin123!
-✨ Funcionalidades Principales
-🎟️ Compra de Tickets
 
-Selección del evento
+6) Ejecutar:
+- Backend (Terminal 1)
+bash
+cd backend
+npm start
 
-Elección del tipo y cantidad
+- Frontend (Terminal 2)
+bash
+npm run dev
 
-Ingreso de datos y pago
 
-Confirmación con QR
+Accesos:
+- Frontend: http://localhost:5173
+- Backend: http://localhost:3000
 
-✔️ Características:
+Resumen diferencias:
+- Docker: rápido, todo automatizado.
+- Manual: mayor control y depuración fina.
 
-Transacciones seguras en MySQL
+---
 
-Validación en tiempo real
+## ✨ Funcionalidades
+- Compra con stock consistente y transacciones atómicas
+- QR único con checksum y PDF descargable
+- Validación por QR, código y (opcional) RUT con antifraude
+- Auditoría de validaciones y métricas por operador
+- Autenticación por roles (cliente, operador, admin)
 
-QR único y antifraude
+Accesos rápidos:
+- Operador: /operator/login — operador@ticketsystem.com / Operador123!
+- Admin: /admin — admin@ticketsystem.com / Admin123!
 
-PDF + Envío por email
+---
 
-🎫 Validación de Tickets (Panel Operador)
+## 📊 Estructura del Proyecto
 
-Escaneo QR con cámara del dispositivo
-
-Ingreso Manual por código o RUT
-
-Detección de duplicados, falsos o expirados
-
-Registro de auditoría y control de accesos
-
-🧑‍💼 Panel de Administración
-
-Gestión completa de eventos y tipos de tickets
-
-Control de usuarios y roles
-
-Reportes, estadísticas y auditoría
-
-Actualización en tiempo real
-
-📊 Estructura del Proyecto
 ingenieriaSoftware-Boleteria/
-├── src/
-│   ├── views/            # Vistas principales
-│   ├── components/       # Componentes reutilizables
-│   ├── stores/           # Gestión de estado (Pinia)
-│   ├── services/         # Servicios API
-│   └── router/           # Configuración de rutas
-├── backend/
+├── src/                      # Frontend
+│   ├── views/
+│   ├── components/
+│   ├── stores/
+│   ├── services/
+│   └── router/
+├── backend/                  # API Node/Express
 │   ├── src/
-│   │   ├── models/       # Modelos Sequelize
-│   │   ├── controllers/  # Lógica de negocio
-│   │   ├── routes/       # Endpoints REST
-│   │   └── config/       # Configuración
+│   │   ├── models/
+│   │   ├── controllers/
+│   │   ├── routes/
+│   │   └── config/
 │   └── server.js
 ├── docker-compose.yml
 └── package.json
 
-🔧 API Endpoints Principales
-Módulo	Método	Endpoint	Descripción
-Eventos	GET	/api/events	Listar eventos
-	POST	/api/events	Crear evento
-Tickets	POST	/api/tickets	Comprar ticket
-	PUT	/api/tickets/:code/validate	Validar ticket
-Usuarios	POST	/api/users/login	Iniciar sesión
-	GET	/api/users	Listar usuarios
-🛡️ Seguridad
 
-Códigos QR con checksum (TKT-XXXXX-XXXX)
+---
 
-Autenticación JWT (roles: cliente, operador, admin)
+## 🔌 API Endpoints
 
-Prevención de reuso (anti-replay)
+Autenticación
+- POST /api/users/register — registrar usuario
+- POST /api/users/login — login (JWT)
 
-Auditoría de accesos
+Eventos
+- GET /api/events — listar eventos
+- GET /api/events/:id — obtener evento
+- POST /api/events — crear
+- PUT /api/events/:id — actualizar
+- DELETE /api/events/:id — eliminar
 
-💾 Base de Datos
+Tipos de tickets
+- GET /api/ticket-types — listar
+- GET /api/ticket-types/:id — obtener
+- GET /api/ticket-types/event/:eventId — por evento
+- POST /api/ticket-types — crear
+- PUT /api/ticket-types/:id — actualizar
+- DELETE /api/ticket-types/:id — eliminar
 
-Diagrama simplificado:
+Tickets
+- GET /api/tickets — listar
+- GET /api/tickets/:id — obtener
+- GET /api/tickets/code/:code — buscar por código
+- POST /api/tickets — comprar
+- PUT /api/tickets/:code/validate — validar
+- DELETE /api/tickets/:id — cancelar
+- (Opcional) GET /api/tickets/rut/:rut — buscar por RUT
+
+Auditoría
+- GET /api/audit/logs — logs con filtros
+- GET /api/audit/stats — estadísticas
+- GET /api/audit/report/:eventId — reporte por evento
+- POST /api/audit/log — crear registro
+- POST /api/audit/generate-pdf — generar PDF
+
+Salud
+- GET /api/health — estado del servicio
+
+Ejemplos cURL
+bash
+curl -X POST http://localhost:3000/api/users/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@ticketsystem.com","password":"Admin123!"}'
+
+curl http://localhost:3000/api/events
+
+curl -X PUT http://localhost:3000/api/tickets/TKT-ABCDE-1234/validate
+
+curl "http://localhost:3000/api/audit/logs?eventId=1&validationType=qr&limit=50"
+
+
+---
+
+## 🔐 Seguridad
+- Hash de contraseñas con bcrypt
+- JWT por roles: cliente, operador, admin
+- Control anti-replay, duplicados y checksum en QR
+- Recomendado producción: Helmet, rate limiting, HTTPS, rotación de secretos
+
+---
+
+## 💾 Base de Datos
+
+Diagrama ER simplificado (sin VENUES):
 
 USERS ─┐
-       ├─► TICKETS ◄─┬─ TICKET_TYPES ◄─── EVENTS ◄─── VENUES
+       ├─► TICKETS ◄─┬─ TICKET_TYPES ◄── EVENTS
        │             │
        └─────────────┘
 
-🐛 Solución de Problemas
-❌ El Frontend no conecta
 
-Asegúrate de que el backend corre en puerto 3000
+Tablas clave:
+- users, events, ticket_types, tickets, audit_logs
 
-Verifica CORS en backend/server.js
+Nota: Se removieron referencias a “venues” porque no existe un modelo/tabla Venue en el proyecto actual.
 
-Comprueba variable VITE_API_URL
+---
 
-🧱 La base de datos no conecta
+## 🐛 Solución de Problemas
+Frontend no conecta
+- Backend en puerto 3000
+- CORS habilitado
+- VITE_API_URL correcto
 
-Revisa credenciales en .env
+Base de datos no conecta
+- Revisar .env
+- MySQL en 3306
+- BD ticketing_system creada
+- En Docker, esperar ~20s al inicio
 
-Asegura que MySQL corre en 3306
-
-Verifica que ticketing_system exista
-
-⏱️ QR valida sin código
-
-Solucionado: ahora espera 15 s antes de validar
-
-Si no hay QR → muestra “Tiempo de Escaneo Expirado”
-
-📚 Documentación Complementaria
-
-Para más detalles, consulta:
-📄 backend/README.md
-📘 Guía de Usuario - TicketVue.pdf
-
-👥 Equipo de Desarrollo
-Rol	Nombre	Responsabilidades
-💻 Developer	Benjamín Vivanco	Backend, vista operador, integración visual
-🧠 Scrum Master	Pablo Sepúlveda	Integración DB, Docker y API
-
-🧩 Product Owner	Javier Cancino	Jira, Historias de Usuario y subtareas
+Puertos ocupados (Windows)
+powershell
+netstat -ano | findstr :3000
+taskkill /PID <PID> /F
 
 
+Recrear servicios Docker
+bash
+docker compose down -v
+docker compose up -d --build
 
 
-🪪 Licencia
+---
 
-Proyecto de código abierto — Licencia MIT
-🗓️ Versión: 2.0.0 — Última actualización: Noviembre 2025
+## 📈 Logs y Monitoreo
+Docker
+bash
+docker compose ps
+docker compose logs -f
+docker compose logs -f backend
+docker compose logs -f db
+
+
+Backend local
+bash
+cd backend
+npm run dev
+
+
+MySQL (Windows)
+powershell
+sc query MySQL
+Get-Content "C:\ProgramData\MySQL\MySQL Server 8.0\Data\DESKTOP.err" -Wait
+
+
+---
+
+## 👥 Equipo
+- 💻 Benjamín Vivanco — Backend, panel operador, integración visual
+- 🧠 Pablo Sepúlveda — Integración DB, Docker, API
+- 🧩 Javier Cancino — Jira, Historias de Usuario y subtareas
+
+---
+
+## 🪪 Licencia
+MIT — Versión 2.0.0 — Última actualización: Noviembre 2025

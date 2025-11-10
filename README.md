@@ -95,6 +95,7 @@ CREATE DATABASE ticketing_system;
 
 7) Variables de entorno (backend/.env):
 env
+<pre>
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=tu_password
@@ -102,7 +103,7 @@ DB_NAME=ticketing_system
 DB_PORT=3306
 PORT=3000
 NODE_ENV=development
-
+</pre>
 
 8) Semillas iniciales:
 bash

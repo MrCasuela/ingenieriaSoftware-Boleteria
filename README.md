@@ -221,6 +221,7 @@ Salud
 
 Ejemplos cURL
 bash
+<pre>
 curl -X POST http://localhost:3000/api/users/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@ticketsystem.com","password":"Admin123!"}'
@@ -230,7 +231,7 @@ curl http://localhost:3000/api/events
 curl -X PUT http://localhost:3000/api/tickets/TKT-ABCDE-1234/validate
 
 curl "http://localhost:3000/api/audit/logs?eventId=1&validationType=qr&limit=50"
-
+</pre>
 
 ---
 

@@ -134,7 +134,7 @@ users (1:N) tickets (como validador - operadores)
 events (1:N) ticket_types
 events (1:N) tickets
 ticket_types (1:N) tickets
-venues (1:N) events
+
 ```
 
 ### Tablas

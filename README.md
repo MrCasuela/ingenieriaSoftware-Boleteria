@@ -76,7 +76,7 @@ bash
 npm install
 </pre>
 
-3) Backend:
+2) Backend:
 
 bash
 <pre> 
@@ -84,7 +84,7 @@ cd backend
 npm install
 </pre>
 
-5) Base de datos:
+3) Base de datos:
    
 sql
 <pre>
@@ -93,7 +93,7 @@ CREATE DATABASE ticketing_system;
 
 
 
-7) Variables de entorno (backend/.env):
+4) Variables de entorno (backend/.env):
 env
 <pre>
 DB_HOST=localhost
@@ -105,14 +105,14 @@ PORT=3000
 NODE_ENV=development
 </pre>
 
-8) Semillas iniciales:
+5) Semillas iniciales:
 bash
 <pre>
 cd backend
 npm run seed
 </pre>
 
-7) Ejecutar:
+6) Ejecutar:
 - Backend (Terminal 1)
 bash
 <pre>

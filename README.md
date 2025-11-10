@@ -52,7 +52,7 @@ Accesos:
 Apagar/limpiar:
 bash
 docker compose down
-### Reset total (incluye borrar volúmenes/DB):
+# Reset total (incluye borrar volúmenes/DB):
 docker compose down -v
 docker compose up -d --build
 

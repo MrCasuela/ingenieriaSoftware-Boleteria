@@ -41,9 +41,10 @@ Requisitos:
 
 Comandos:
 bash
+<pre>
 docker compose up -d --build
 docker compose ps
-
+</pre>
 
 Accesos:
 - Frontend: http://localhost
@@ -51,10 +52,14 @@ Accesos:
 
 Apagar/limpiar:
 bash
+<pre>
 docker compose down
+</pre>
 # Reset total (incluye borrar volúmenes/DB):
+<pre>
 docker compose down -v
 docker compose up -d --build
+</pre>
 
 
 ### Opción 2: Manual (Frontend + Backend + MySQL por separado)
@@ -65,22 +70,30 @@ Requisitos:
 - MySQL 8.0+
 
 1) Frontend:
+
 bash
+<pre>
 npm install
+</pre>
 
+3) Backend:
 
-2) Backend:
 bash
+<pre> 
 cd backend
 npm install
+</pre>
 
-
-3) Base de datos:
+5) Base de datos:
+   
 sql
+<pre>
 CREATE DATABASE ticketing_system;
+</pre>
 
 
-4) Variables de entorno (backend/.env):
+
+7) Variables de entorno (backend/.env):
 env
 DB_HOST=localhost
 DB_USER=root
@@ -91,22 +104,25 @@ PORT=3000
 NODE_ENV=development
 
 
-5) Semillas iniciales:
+8) Semillas iniciales:
 bash
+<pre>
 cd backend
 npm run seed
+</pre>
 
-
-6) Ejecutar:
+7) Ejecutar:
 - Backend (Terminal 1)
 bash
+<pre>
 cd backend
 npm start
-
+</pre>
 - Frontend (Terminal 2)
 bash
+<pre> 
 npm run dev
-
+</pre>
 
 Accesos:
 - Frontend: http://localhost:5173
@@ -228,14 +244,14 @@ curl "http://localhost:3000/api/audit/logs?eventId=1&validationType=qr&limit=50"
 
 ## 💾 Base de Datos
 
-Diagrama ER simplificado (sin VENUES):
-
+Diagrama ER simplificado:
+<pre>
 USERS ─┐
        ├─► TICKETS ◄─┬─ TICKET_TYPES ◄── EVENTS
        │             │
        └─────────────┘
 
-
+</pre>
 Tablas clave:
 - users, events, ticket_types, tickets, audit_logs
 
@@ -256,20 +272,23 @@ Base de datos no conecta
 - En Docker, esperar ~20s al inicio
 
 Puertos ocupados (Windows)
+<pre>
 powershell
 netstat -ano | findstr :3000
 taskkill /PID <PID> /F
-
+</pre>
 
 Recrear servicios Docker
+<pre>
 bash
 docker compose down -v
 docker compose up -d --build
-
+</pre>
 
 ---
 
 ## 📈 Logs y Monitoreo
+<pre> 
 Docker
 bash
 docker compose ps
@@ -277,7 +296,7 @@ docker compose logs -f
 docker compose logs -f backend
 docker compose logs -f db
 
-
+</pre>
 Backend local
 bash
 cd backend

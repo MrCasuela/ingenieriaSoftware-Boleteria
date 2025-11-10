@@ -134,6 +134,8 @@ Accesos rápidos:
 ## 📊 Estructura del Proyecto
  # Frontend
 ingenieriaSoftware-Boleteria/
+
+
 ├── src/    
 
 │   ├── views/

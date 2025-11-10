@@ -313,7 +313,7 @@ Get-Content "C:\ProgramData\MySQL\MySQL Server 8.0\Data\DESKTOP.err" -Wait
 
 ## 👥 Equipo
 - 💻 Benjamín Vivanco — Backend, panel operador, integración visual.
-- 💻 Fernando — Backend, descarga de ticket, Descargar de Reporte de Asistencia.
+- 💻 Fernando Salazar — Backend, descarga de ticket, Descargar de Reporte de Asistencia.
 - 🧠 Pablo Sepúlveda — Integración DB, Docker, API, Aprobacion de proyecto.
 - 🧩 Javier Cancino — Jira, Historias de Usuario, subtareas, mejoras del Readme y Documentación.
 
